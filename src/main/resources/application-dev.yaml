@@ -1,0 +1,23 @@
+spring:
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+
+  flyway:
+    baseline-on-migrate: false
+  
+  jpa:
+    hibernate:
+      ddl-auto: validate
+
+jwt:
+  temp:
+    cookie:
+      expiration: ${JWT_TEMP_COOKIE_EXPIRATION:5m}
+  access:
+    cookie:
+      expiration: ${JWT_ACCESS_COOKIE_EXPIRATION:15m}
+  refresh:
+    cookie:
+      expiration: ${JWT_REFRESH_COOKIE_EXPIRATION:7d}

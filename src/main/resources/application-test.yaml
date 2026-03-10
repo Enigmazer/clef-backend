@@ -1,0 +1,38 @@
+server:
+  port: 0 # Uses a random available port to prevent test conflicts
+
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/clef_test
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop # Wipes the database clean after every test run
+
+  flyway:
+    enabled: false # Hibernate handle table creation for faster testing
+
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: dummy-test-id
+            client-secret: dummy-test-secret
+          github:
+            client-id: dummy-test-id
+            client-secret: dummy-test-secret
+
+jwt:
+  secret: this-is-a-very-secure-thirty-two-bytes-long-secrete-key
+  temp:
+    cookie:
+      expiration: 5m
+  access:
+    cookie:
+      expiration: 15m
+  refresh:
+    cookie:
+      expiration: 7d
