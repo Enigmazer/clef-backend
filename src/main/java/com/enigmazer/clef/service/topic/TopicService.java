@@ -12,5 +12,7 @@ public interface TopicService {
             List<TopicUpdateRequest> request, Long teacherId
     );
 
+    TopicCompleteResponse toggleTopicComplete(Long subjectId, Long unitId, Long topicId, Long teacherId);
+
     void deleteTopic(Long subjectId, Long unitId, List<Long> topicIds, Long teacherId);
 }

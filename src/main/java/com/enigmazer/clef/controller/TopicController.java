@@ -23,7 +23,7 @@ public class TopicController {
 
     private final TopicService topicService;
 
-    // --- Patch Operation ----
+    // --- Patch Operations ----
     @PatchMapping("/update")
     @Operation(summary = "Update the title of the topic.")
     public ResponseEntity<List<TopicUpdateResponse>> updateTopic(
@@ -35,6 +35,19 @@ public class TopicController {
         return ResponseEntity.ok()
                 .body(topicService.updateTopic(
                         subjectId, unitId, request, principal.getId()));
+    }
+
+    @PatchMapping("/{topicId}/complete/toggle")
+    @Operation(summary = "Toggle the completion state of the topic.")
+    public ResponseEntity<TopicCompleteResponse> toggleTopicComplete(
+            @AuthenticationPrincipal CustomUserDetails principal,
+            @PathVariable Long subjectId,
+            @PathVariable Long unitId,
+            @PathVariable Long topicId
+    ){
+        return ResponseEntity.ok()
+                .body(topicService.toggleTopicComplete(
+                        subjectId, unitId, topicId, principal.getId()));
     }
 
     // --- Delete Operations ---

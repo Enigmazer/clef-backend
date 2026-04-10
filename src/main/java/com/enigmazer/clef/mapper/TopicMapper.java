@@ -8,4 +8,5 @@ import org.mapstruct.Mapper;
 @Mapper(componentModel = "spring", uses = {SimpleUnitMapper.class})
 public interface TopicMapper {
     SubjectCurrentNextTopicResponse toResponse(Topic topic);
+    TopicCompleteResponse toTopicCompleteResponse(Topic topic);
 }
