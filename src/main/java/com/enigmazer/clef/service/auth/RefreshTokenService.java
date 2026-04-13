@@ -27,7 +27,7 @@ public class RefreshTokenService {
     private Duration refreshTokenDuration;
 
     @Transactional
-    public String createRefreshToken(User user) {
+    public String generateRefreshToken(User user) {
         // Double UUID for extra entropy — single UUID (122 bits) is sufficient but this adds defense in depth
         String randomTokenString = UUID.randomUUID() + "-" + UUID.randomUUID();
 

@@ -63,16 +63,15 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
         }
 
         String accessToken = jwtService.generateAccessToken(user);
-        String refreshToken = refreshTokenService.createRefreshToken(user);
+        String refreshToken = refreshTokenService.generateRefreshToken(user);
 
-        ResponseCookie accessCookie = cookieService.generateAccessTokenCookie(accessToken);
         ResponseCookie refreshCookie = cookieService.generateRefreshTokenCookie(refreshToken);
 
-        response.addHeader(HttpHeaders.SET_COOKIE, accessCookie.toString());
         response.addHeader(HttpHeaders.SET_COOKIE, refreshCookie.toString());
 
-        String targetUrl = frontendUrl + oAuth2RedirectPath;
-        log.debug("Redirecting user to frontend [targetUrl={}]", targetUrl);
+        // # fragment is stripped by the browser before sending to server — never reaches servers or logs
+        String targetUrl = frontendUrl + oAuth2RedirectPath + "#at=" + accessToken;
+        log.debug("Redirecting user to frontend [targetUrl={}]", targetUrl.split("#")[0] + "#at=<redacted>");
 
         getRedirectStrategy().sendRedirect(request, response, targetUrl);
     }

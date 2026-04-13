@@ -2,23 +2,25 @@ package com.enigmazer.clef.config.security;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.beans.factory.annotation.Qualifier;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.web.authentication.AuthenticationFailureHandler;
 import org.springframework.stereotype.Component;
-import org.springframework.web.servlet.HandlerExceptionResolver;
 
+import java.io.IOException;
+
+@Slf4j
 @Component
 public class OAuth2FailureHandler implements AuthenticationFailureHandler {
 
-    private final HandlerExceptionResolver resolver;
-
-    public OAuth2FailureHandler(@Qualifier("handlerExceptionResolver") HandlerExceptionResolver resolver) {
-        this.resolver = resolver;
-    }
+    @Value("${frontend.url}")
+    private String frontendUrl;
 
     @Override
-    public void onAuthenticationFailure(HttpServletRequest request, HttpServletResponse response, AuthenticationException exception) {
-        resolver.resolveException(request, response, null, exception);
+    public void onAuthenticationFailure(HttpServletRequest request, HttpServletResponse response,
+                                        AuthenticationException exception) throws IOException {
+        log.warn("OAuth2 authentication failed: {}", exception.getMessage());
+        response.sendRedirect(frontendUrl + "/login?error=oauth2_failed");
     }
 }

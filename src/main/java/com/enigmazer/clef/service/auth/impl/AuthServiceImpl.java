@@ -72,7 +72,7 @@ public class AuthServiceImpl implements AuthService{
         }
 
         String accessToken = jwtService.generateAccessToken(user);
-        String refreshToken = refreshTokenService.createRefreshToken(user);
+        String refreshToken = refreshTokenService.generateRefreshToken(user);
 
         log.info("User successfully signed in via email and password [userId={}]", userId);
         return new LoginResult.FullAuth(
@@ -102,7 +102,7 @@ public class AuthServiceImpl implements AuthService{
 
     @Override
     @Transactional
-    public TokenPair refreshTokens(String refreshToken, Long userId) {
+    public TokenPair refreshTokens(String refreshToken) {
         RefreshToken token = refreshTokenService.findByToken(refreshToken)
                 .orElseThrow(() -> new BusinessException("Invalid or expired refresh token."));
 
@@ -114,9 +114,9 @@ public class AuthServiceImpl implements AuthService{
         refreshTokenService.deleteByToken(refreshToken);
 
         String newAccessToken = jwtService.generateAccessToken(user);
-        String newRefreshToken = refreshTokenService.createRefreshToken(user);
+        String newRefreshToken = refreshTokenService.generateRefreshToken(user);
 
-        log.info("Tokens refreshed [userId={}]", userId);
+        log.info("Tokens refreshed [userId={}]", user.getId());
         return new TokenPair(newAccessToken, newRefreshToken);
     }
 
@@ -172,7 +172,7 @@ public class AuthServiceImpl implements AuthService{
         User user = verify2FAOtpAndGetUser(otpCode, claims.userId());
 
         String accessToken = jwtService.generateAccessToken(user);
-        String refreshToken = refreshTokenService.createRefreshToken(user);
+        String refreshToken = refreshTokenService.generateRefreshToken(user);
 
         log.info("User successfully signed in via 2FA [userId={}]", user.getId());
         return new AuthResponse(user.getId(), user.getRole().getName().name(), accessToken, refreshToken);

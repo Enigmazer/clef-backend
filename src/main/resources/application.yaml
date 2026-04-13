@@ -3,6 +3,12 @@ server:
   servlet:
     context-path: /api
 
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+
 spring:
   application:
     name: clef
@@ -18,10 +24,12 @@ spring:
             client-id: ${GOOGLE_CLIENT_ID}
             client-secret: ${GOOGLE_CLIENT_SECRET}
             scope: email, profile
+            redirect-uri: "${FRONTEND_URL}/api/login/oauth2/code/{registrationId}"
           github:
             client-id: ${GITHUB_CLIENT_ID}
             client-secret: ${GITHUB_CLIENT_SECRET}
             scope: read:user, user:email
+            redirect-uri: "${FRONTEND_URL}/api/login/oauth2/code/{registrationId}"
 
   jpa:
     open-in-view: false # Prevents database connection exhaustion in a large-scale userbase
@@ -43,4 +51,3 @@ twilio:
   auth-token: ${TWILIO_AUTH_TOKEN}
   verify:
     service-sid: ${TWILIO_SERVICE_SID}
-

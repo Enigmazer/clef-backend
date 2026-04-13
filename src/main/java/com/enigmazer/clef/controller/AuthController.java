@@ -34,15 +34,13 @@ public class AuthController {
     public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
         return switch (authService.authenticateUser(request.email(), request.password())) {
             case LoginResult.FullAuth(AuthResponse authResponse) -> {
-                ResponseCookie accessCookie = cookieService
-                        .generateAccessTokenCookie(authResponse.accessToken());
                 ResponseCookie refreshCookie = cookieService
                         .generateRefreshTokenCookie(authResponse.refreshToken());
                 yield ResponseEntity.ok()
-                        .header(HttpHeaders.SET_COOKIE, accessCookie.toString())
                         .header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
                         .body(new LoginSuccessResponse(
-                                authResponse.userId(), authResponse.role(), "Login successful"));
+                                authResponse.userId(), authResponse.role(),
+                                authResponse.accessToken(), "Login successful"));
             }
             case LoginResult.TwoFactorPending pending -> {
                 ResponseCookie tempCookie = cookieService.generateTempTokenCookie(pending.tempToken());
@@ -66,21 +64,19 @@ public class AuthController {
     @PostMapping("/refresh")
     @Operation(summary = "Generate new access and refresh tokens")
     public ResponseEntity<Map<String, String>> refresh(
-            @AuthenticationPrincipal CustomUserDetails principal,
             @CookieValue(name = "refreshToken", required = false) String refreshToken) {
 
         if(refreshToken == null || refreshToken.isBlank()){
             throw new InvalidRequestException("No refresh token found.");
         }
 
-        TokenPair tokens = authService.refreshTokens(refreshToken, principal.getId());
-        ResponseCookie newAccessCookie = cookieService.generateAccessTokenCookie(tokens.accessToken());
+        TokenPair tokens = authService.refreshTokens(refreshToken);
         ResponseCookie newRefreshCookie = cookieService.generateRefreshTokenCookie(tokens.refreshToken());
 
         return ResponseEntity.ok()
-                .header(HttpHeaders.SET_COOKIE, newAccessCookie.toString())
                 .header(HttpHeaders.SET_COOKIE, newRefreshCookie.toString())
-                .body(Map.of("message", "Tokens refreshed successfully"));
+                .body(Map.of("message", "Tokens refreshed successfully",
+                             "accessToken", tokens.accessToken()));
     }
 
     @PostMapping("/logout")
@@ -93,9 +89,11 @@ public class AuthController {
             authService.logout(principal.getId(), refreshToken);
         }
 
-        List<ResponseCookie> deadCookies = cookieService.generateLogoutCookies();
+        ResponseCookie logoutCookie = cookieService.generateRefreshTokenClearCookie();
 
-        return buildLogoutResponse(deadCookies, "Logged out successfully");
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, logoutCookie.toString())
+                .body(Map.of("message", "Logged out successfully"));
     }
 
     @PostMapping("/logout-all")
@@ -104,18 +102,11 @@ public class AuthController {
             @AuthenticationPrincipal CustomUserDetails principal) {
         authService.logoutAllDevices(principal.getId());
 
-        List<ResponseCookie> deadCookies = cookieService.generateLogoutCookies();
+        ResponseCookie logoutCookie = cookieService.generateRefreshTokenClearCookie();
 
-        return buildLogoutResponse(deadCookies, "Logged out from all devices successfully");
-    }
-
-    private ResponseEntity<Map<String, String>> buildLogoutResponse(
-            List<ResponseCookie> deadCookie, String message){
-        ResponseEntity.BodyBuilder response = ResponseEntity.ok();
-        for(ResponseCookie cookie : deadCookie){
-            response = response.header(HttpHeaders.SET_COOKIE, cookie.toString());
-        }
-        return response.body(Map.of("message", message));
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, logoutCookie.toString())
+                .body(Map.of("message", "Logged out from all devices successfully"));
     }
 
     // --- Two-Factor Authentication Operations ---
@@ -153,15 +144,14 @@ public class AuthController {
 
         AuthResponse authData = authService.verifyTwoFA(tempToken, request.otpCode());
 
-        ResponseCookie accessCookie = cookieService.generateAccessTokenCookie(authData.accessToken());
         ResponseCookie refreshCookie = cookieService.generateRefreshTokenCookie(authData.refreshToken());
         ResponseCookie clearTempCookie = cookieService.generateTempTokenClearCookie();
 
         return ResponseEntity.ok()
-                .header(HttpHeaders.SET_COOKIE, accessCookie.toString())
                 .header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
                 .header(HttpHeaders.SET_COOKIE, clearTempCookie.toString())
                 .body(new LoginSuccessResponse(
-                        authData.userId(), authData.role(), "Login successful"));
+                        authData.userId(), authData.role(),
+                        authData.accessToken(), "Login successful"));
     }
 }

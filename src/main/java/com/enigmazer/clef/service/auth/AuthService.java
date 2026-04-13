@@ -9,7 +9,7 @@ public interface AuthService {
 
     void setOrUpdatePassword(Long userId, String newPassword);
 
-    TokenPair refreshTokens(String refreshToken, Long userId);
+    TokenPair refreshTokens(String refreshToken);
 
     void logout(Long userId, String refreshToken);
 
