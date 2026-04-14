@@ -1,6 +1,5 @@
 package com.enigmazer.clef.repository;
 
-import com.enigmazer.clef.entity.Subject;
 import com.enigmazer.clef.entity.Unit;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;

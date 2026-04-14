@@ -1,0 +1,13 @@
+target
+.git
+.idea
+.vscode
+*.iml
+*.log
+*.md
+.gitignore
+.gitattributes
+.env
+.env.example
+**/other/
+/src/main/resources/application-dev.yml

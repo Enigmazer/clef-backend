@@ -2,8 +2,6 @@ package com.enigmazer.clef.service.subject;
 
 import com.enigmazer.clef.dto.enrollment.EnrolledStudentResponse;
 import com.enigmazer.clef.dto.subject.*;
-import com.enigmazer.clef.dto.subject.SubjectCurrentNextTopicRequest;
-import com.enigmazer.clef.dto.subject.SubjectCurrentNextTopicResponse;
 import com.enigmazer.clef.dto.unit.UnitCreationRequest;
 
 import java.util.List;

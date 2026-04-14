@@ -3,8 +3,6 @@ package com.enigmazer.clef.controller;
 import com.enigmazer.clef.config.security.CustomUserDetails;
 import com.enigmazer.clef.dto.enrollment.EnrolledStudentResponse;
 import com.enigmazer.clef.dto.subject.*;
-import com.enigmazer.clef.dto.subject.SubjectCurrentNextTopicRequest;
-import com.enigmazer.clef.dto.subject.SubjectCurrentNextTopicResponse;
 import com.enigmazer.clef.dto.unit.UnitCreationRequest;
 import com.enigmazer.clef.service.subject.SubjectService;
 import io.swagger.v3.oas.annotations.Operation;
