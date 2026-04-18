@@ -46,9 +46,6 @@ public class Subject {
     @Column(name = "join_code", length = 10, unique = true, nullable = false)
     private String joinCode;
 
-    @Column(name = "syllabus_file_url", columnDefinition = "TEXT")
-    private String syllabusFileUrl;
-
     @Column(name = "syllabus_key", columnDefinition = "TEXT")
     private String syllabusKey;
 

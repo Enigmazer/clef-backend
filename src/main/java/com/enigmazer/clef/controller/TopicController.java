@@ -25,15 +25,15 @@ public class TopicController {
 
     // --- Patch Operations ----
     @PatchMapping("/update")
-    @Operation(summary = "Update the title of the topic.")
-    public ResponseEntity<List<TopicUpdateResponse>> updateTopic(
+    @Operation(summary = "Update the title of the topics.")
+    public ResponseEntity<List<TopicUpdateResponse>> updateTopics(
             @AuthenticationPrincipal CustomUserDetails principal,
             @PathVariable Long subjectId,
             @PathVariable Long unitId,
             @Valid @RequestBody List<TopicUpdateRequest> request
     ){
         return ResponseEntity.ok()
-                .body(topicService.updateTopic(
+                .body(topicService.updateTopics(
                         subjectId, unitId, request, principal.getId()));
     }
 
@@ -52,14 +52,14 @@ public class TopicController {
 
     // --- Delete Operations ---
     @DeleteMapping("/delete")
-    @Operation(summary = "Delete a topic.")
-    public ResponseEntity<Void> deleteTopic(
+    @Operation(summary = "Delete topics.")
+    public ResponseEntity<Void> deleteTopics(
             @AuthenticationPrincipal CustomUserDetails principal,
             @PathVariable Long subjectId,
             @PathVariable Long unitId,
             @RequestBody List<Long> topicIds
     ){
-        topicService.deleteTopic(subjectId, unitId, topicIds, principal.getId());
+        topicService.deleteTopics(subjectId, unitId, topicIds, principal.getId());
         return ResponseEntity.noContent().build();
     }
 }

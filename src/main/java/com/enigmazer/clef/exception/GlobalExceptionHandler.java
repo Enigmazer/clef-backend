@@ -1,6 +1,7 @@
 package com.enigmazer.clef.exception;
 
 import com.enigmazer.clef.dto.auth.ErrorResponse;
+import io.jsonwebtoken.JwtException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
@@ -55,6 +56,18 @@ public class GlobalExceptionHandler {
         log.warn("Unauthorized access attempt on [{}]: {}", request.getRequestURI(), ex.getMessage());
         return generateResponse(HttpStatus.UNAUTHORIZED, "Authentication required.", request);
     }
+
+    /**
+     * Catches 401: invalid or expired jwt.
+     */
+    @ExceptionHandler(JwtException.class)
+    public ResponseEntity<ErrorResponse> handleJwtException(
+            JwtException ex, HttpServletRequest request) {
+
+        log.warn("JWT validation failed on [{}]: {}", request.getRequestURI(), ex.getMessage());
+        return generateResponse(HttpStatus.UNAUTHORIZED, "Invalid or expired token.", request);
+    }
+
 
     /**
      * Catches 403: authenticated but not allowed.

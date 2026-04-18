@@ -14,14 +14,17 @@ import com.enigmazer.clef.mapper.SubjectMapper;
 import com.enigmazer.clef.mapper.TopicMapper;
 import com.enigmazer.clef.repository.*;
 import com.enigmazer.clef.service.common.SubjectHelper;
+import com.enigmazer.clef.service.storage.StorageService;
 import com.enigmazer.clef.util.JoinCodeGenerator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
+import java.util.Objects;
 
 @Slf4j
 @Service
@@ -29,10 +32,12 @@ import java.util.List;
 public class SubjectServiceImpl implements SubjectService {
 
     private final SubjectRepository subjectRepository;
-    private final UserRepository userRepository;
     private final UnitRepository unitRepository;
     private final TopicRepository topicRepository;
+    private final UserRepository userRepository;
     private final EnrollmentRepository enrollmentRepository;
+
+    private final StorageService storageService;
 
     private final SubjectMapper subjectMapper;
     private final TopicMapper topicMapper;
@@ -83,7 +88,7 @@ public class SubjectServiceImpl implements SubjectService {
     @Transactional(readOnly = true)
     public List<ListStudentSubjectsResponse> listStudentSubjects(Long studentId) {
         log.debug("Returned all subjects [studentId={}]", studentId);
-        return enrollmentRepository.findAllByStudentIdAndIsArchivedFalse(studentId)
+        return enrollmentRepository.findAllStudentEnrollments(studentId)
                 .stream()
                 .map(enrollmentMapper::toStudentSummary)
                 .toList();
@@ -98,7 +103,7 @@ public class SubjectServiceImpl implements SubjectService {
 
         log.debug("Returned all students enrolled in the subject " +
                 "[subjectId={}, teacherId={}]", subjectId, teacherId);
-        return enrollmentRepository.findAllBySubjectIdAndTeacherId(subjectId, teacherId)
+        return enrollmentRepository.findEnrollmentsBySubjectId(subjectId, teacherId)
                 .stream()
                 .map(enrollmentMapper::toResponse)
                 .toList();
@@ -107,7 +112,7 @@ public class SubjectServiceImpl implements SubjectService {
     @Override
     @Transactional(readOnly = true)
     public SubjectDetailsTeacherResponse getTeacherSubjectDetails(Long subjectId, Long teacherId) {
-        Subject subject = subjectRepository.findByIdForTeacher(subjectId, teacherId)
+        Subject subject = subjectRepository.findSubjectDetailByIdAndTeacherId(subjectId, teacherId)
                 .orElseThrow(() -> new ResourceNotFoundException("Subject not found"));
 
         log.debug("Returned subject details [subjectId={}, teacherId={}]", subjectId, teacherId);
@@ -122,7 +127,7 @@ public class SubjectServiceImpl implements SubjectService {
             throw new ResourceNotFoundException("Subject not found");
         }
 
-        Subject subject = subjectRepository.findByIdForStudent(subjectId, studentId)
+        Subject subject = subjectRepository.findSubjectDetailByIdAndStudentId(subjectId, studentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Subject not found"));
 
         if(!subject.getTeacher().isShowPhoneToStudents()){
@@ -188,17 +193,24 @@ public class SubjectServiceImpl implements SubjectService {
 
     @Override
     @Transactional
-    public String setSyllabusUrl(Long subjectId, String syllabusUrl, Long teacherId) {
+    public String uploadSyllabus(Long subjectId, MultipartFile file, Long teacherId) {
         Subject subject = subjectHelper.findSubjectByIdAndTeacherId(subjectId, teacherId);
 
         subjectHelper.checkArchived(subject);
 
-        subject.setSyllabusFileUrl(syllabusUrl);
+        if(subject.getSyllabusKey() != null){
+            throw new InvalidRequestException("Delete old syllabus pdf before uploading new one.");
+        }
 
+        String syllabusKey = storageService.generateSyllabusKey(file);
+        subject.setSyllabusKey(syllabusKey);
         subjectRepository.save(subject);
-        log.info("Successfully added syllabus url for subject " +
+
+        storageService.uploadSyllabus(file, syllabusKey);
+
+        log.info("Successfully uploaded syllabus pdf for subject " +
                 "[subjectId={}, teacherId={}]", subjectId, teacherId);
-        return syllabusUrl;
+        return storageService.generateSyllabusUrl(syllabusKey);
     }
 
     @Override
@@ -212,7 +224,7 @@ public class SubjectServiceImpl implements SubjectService {
 
         subjectHelper.checkArchived(subject);
 
-        Topic topic = topicRepository.findByIdAndUnitIdAndSubjectId(
+        Topic topic = topicRepository.findByIdAndParentValidation(
                         request.id(), request.unitId(), subjectId)
                 .orElseThrow(() -> new ResourceNotFoundException("Topic not found"));
 
@@ -243,7 +255,7 @@ public class SubjectServiceImpl implements SubjectService {
 
         subjectHelper.checkArchived(subject);
 
-        Topic topic = topicRepository.findByIdAndUnitIdAndSubjectId(
+        Topic topic = topicRepository.findByIdAndParentValidation(
                         request.id(), request.unitId(), subjectId)
                 .orElseThrow(() -> new ResourceNotFoundException("Topic not found"));
 
@@ -266,15 +278,49 @@ public class SubjectServiceImpl implements SubjectService {
     @Override
     @Transactional
     public void deleteSubject(Long subjectId, Long teacherId) {
-        Subject subject = subjectHelper.findSubjectByIdAndTeacherId(subjectId, teacherId);
+       Subject subject = subjectRepository.findWithTopicMaterialsByIdAndTeacherId(subjectId, teacherId)
+               .orElseThrow(() -> new ResourceNotFoundException("Subject not found"));
 
         // Clearing Hibernate session references before delete
         subject.setCurrentTopic(null);
         subject.setNextTopic(null);
-        subjectRepository.save(subject);
+
+        if(subject.getSyllabusKey() != null) {
+            storageService.deleteSyllabus(subject.getSyllabusKey());
+        }
+
+        List<String> topicMaterialKeys = subject.getUnits().stream()
+                .flatMap(unit -> unit.getTopics().stream())
+                .flatMap(topic -> topic.getTopicMaterials().stream())
+                .map(TopicMaterial::getTopicMaterialKey)
+                .filter(Objects::nonNull)
+                .toList();
+
+        if(!topicMaterialKeys.isEmpty()){
+            storageService.deleteTopicMaterials(topicMaterialKeys);
+        }
 
         subjectRepository.delete(subject);
+
         log.info("Successfully deleted the subject [subjectId={}, teacherId={}]", subjectId, teacherId);
+    }
+
+    @Override
+    @Transactional
+    public void deleteSyllabus(Long subjectId, Long teacherId) {
+        Subject subject = subjectHelper.findSubjectByIdAndTeacherId(subjectId, teacherId);
+
+        subjectHelper.checkArchived(subject);
+
+        if (subject.getSyllabusKey() == null) {
+            throw new BusinessException("Subject has no syllabus to delete");
+        }
+
+        storageService.deleteSyllabus(subject.getSyllabusKey());
+        subject.setSyllabusKey(null);
+
+        subjectRepository.save(subject);
+        log.info("Successfully deleted the syllabus [subjectId={}, teacherId={}]", subjectId, teacherId);
     }
 
     @Override
@@ -304,7 +350,7 @@ public class SubjectServiceImpl implements SubjectService {
             throw new ResourceAlreadyExistsException("You are already enrolled in this subject");
         }
 
-        Subject fullSubject = subjectRepository.findByIdForStudent(subject.getId(), studentId)
+        Subject fullSubject = subjectRepository.findSubjectDetailByIdAndStudentId(subject.getId(), studentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Subject not found"));
 
         if(!subject.getTeacher().isShowPhoneToStudents()){

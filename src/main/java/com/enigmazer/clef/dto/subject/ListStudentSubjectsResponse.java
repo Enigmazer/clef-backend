@@ -7,5 +7,6 @@ public record ListStudentSubjectsResponse(
         String name,
         String description,
         String teacherName,
+        String teacherAvatarUrl,
         Instant joinedAt
 ){}

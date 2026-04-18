@@ -7,6 +7,8 @@ import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
 
 import java.time.Instant;
+import java.util.LinkedHashSet;
+import java.util.Set;
 
 @Entity
 @Table(
@@ -38,6 +40,10 @@ public class Topic {
 
     @Column(name = "order_index", nullable = false)
     private Integer orderIndex;
+
+    @OneToMany(mappedBy = "topic", fetch = FetchType.LAZY)
+    @OrderBy("id ASC")
+    private Set<TopicMaterial> topicMaterials = new LinkedHashSet<>();
 
     @Column(name = "completed_at")
     private Instant completedAt;

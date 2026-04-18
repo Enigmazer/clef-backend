@@ -38,7 +38,6 @@ public record SubjectDetailsStudentResponse(
 
         Instant createdAt,
 
-
         // teacher info
         @Schema(description = "Name of the teacher who teaches this subject.")
         String teacherName,

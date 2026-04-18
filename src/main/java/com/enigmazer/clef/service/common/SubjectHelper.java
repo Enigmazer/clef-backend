@@ -25,9 +25,4 @@ public class SubjectHelper {
             throw new InvalidRequestException("Archived subject cannot be modified.");
         }
     }
-
-    public Subject findSubjectByIdAndTeacherIdWithTopics(Long subjectId, Long teacherId) {
-        return subjectRepository.findByIdAndTeacherIdWithTopics(subjectId, teacherId)
-                .orElseThrow(() -> new ResourceNotFoundException("Subject not found"));
-    }
 }

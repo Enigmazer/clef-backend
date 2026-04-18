@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
@@ -27,6 +28,7 @@ public interface PhoneNumberRepository extends JpaRepository<PhoneNumber, Long> 
 
     Optional<PhoneNumber> findByUserIdAndIsPrimaryFalse(Long userId);
 
+    @Transactional
     @Modifying
     @Query("UPDATE PhoneNumber p SET p.isPrimary = false WHERE p.user.id = :userId")
     void clearPrimaryByUserId(@Param("userId") Long userId);

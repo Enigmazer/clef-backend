@@ -5,6 +5,7 @@ import com.enigmazer.clef.dto.unit.UnitUpdateRequest;
 import com.enigmazer.clef.dto.unit.UnitUpdateResponse;
 import com.enigmazer.clef.entity.Subject;
 import com.enigmazer.clef.entity.Topic;
+import com.enigmazer.clef.entity.TopicMaterial;
 import com.enigmazer.clef.entity.Unit;
 import com.enigmazer.clef.exception.ResourceAlreadyExistsException;
 import com.enigmazer.clef.exception.ResourceNotFoundException;
@@ -14,11 +15,15 @@ import com.enigmazer.clef.repository.SubjectRepository;
 import com.enigmazer.clef.repository.TopicRepository;
 import com.enigmazer.clef.repository.UnitRepository;
 import com.enigmazer.clef.service.common.SubjectHelper;
+import com.enigmazer.clef.service.storage.StorageService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+import java.util.Objects;
 
 @Slf4j
 @Service
@@ -28,6 +33,8 @@ public class UnitServiceImpl implements UnitService{
     private final UnitRepository unitRepository;
     private final SubjectRepository subjectRepository;
     private final TopicRepository topicRepository;
+
+    private final StorageService storageService;
 
     private final UnitMapper unitMapper;
 
@@ -73,7 +80,7 @@ public class UnitServiceImpl implements UnitService{
                 );
             }
         }
-        Unit savedUnit = unitRepository.findByIdAndSubjectId(unitId, subjectId).orElseThrow(
+        Unit savedUnit = unitRepository.findWithTopicsByIdAndSubjectId(unitId, subjectId).orElseThrow(
                 () -> new SystemResourceNotFoundException("Unit not found", unitId)
         );
 
@@ -85,11 +92,12 @@ public class UnitServiceImpl implements UnitService{
     @Override
     @Transactional
     public void deleteUnit(Long subjectId, Long unitId,Long teacherId) {
-        Subject subject = subjectHelper.findSubjectByIdAndTeacherId(subjectId, teacherId);
+        Subject subject = subjectRepository.findWithCurrentAndNextTopicByIdAndTeacherId(subjectId, teacherId)
+                .orElseThrow(() -> new ResourceNotFoundException("Subject not found"));
 
         subjectHelper.checkArchived(subject);
 
-        Unit unit = unitRepository.findByIdAndSubjectId(unitId, subjectId).orElseThrow(
+        Unit unit = unitRepository.findWithTopicsByIdAndSubjectId(unitId, subjectId).orElseThrow(
                 () -> new ResourceNotFoundException("Unit not found")
         );
 
@@ -106,7 +114,18 @@ public class UnitServiceImpl implements UnitService{
                     "[subjectId={}, unitId={}]", subjectId, unitId);
         }
 
+        List<String> topicMaterialKeys = unit.getTopics().stream()
+                .flatMap(topic -> topic.getTopicMaterials().stream())
+                .map(TopicMaterial::getTopicMaterialKey)
+                .filter(Objects::nonNull)
+                .toList();
+
+        if(!topicMaterialKeys.isEmpty()){
+            storageService.deleteTopicMaterials(topicMaterialKeys);
+        }
+
         unitRepository.delete(unit);
+
         log.info("Successfully deleted the unit [subjectId={}, " +
                 "unitId={}, teacherId={}]", subjectId, unitId, teacherId);
     }

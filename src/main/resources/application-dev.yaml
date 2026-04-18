@@ -11,6 +11,14 @@ spring:
     hibernate:
       ddl-auto: validate
 
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 50MB
+
+logging:
+  level:
+    com.enigmazer.clef: trace
 jwt:
   temp:
     cookie:

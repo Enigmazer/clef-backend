@@ -15,6 +15,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.Map;
@@ -131,14 +132,14 @@ public class SubjectController {
     }
 
     @PatchMapping("/{id}/syllabus")
-    @Operation(summary = "Set the syllabus URL for a subject")
-    public ResponseEntity<Map<String,String>> setSyllabusUrl(
+    @Operation(summary = "Upload the syllabus PDF for a subject")
+    public ResponseEntity<Map<String,String>> uploadSyllabus(
             @AuthenticationPrincipal CustomUserDetails principal,
             @PathVariable("id") Long subjectId,
-            @Valid @RequestBody SubjectAddSyllabusUrlRequest request
+            @RequestParam("file") MultipartFile file
     ){
         String syllabusUrl = subjectService
-                .setSyllabusUrl(subjectId, request.syllabusUrl(), principal.getId());
+                .uploadSyllabus(subjectId, file, principal.getId());
         return ResponseEntity.ok()
                 .body(Map.of("syllabusUrl", syllabusUrl));
     }
@@ -173,6 +174,16 @@ public class SubjectController {
             @PathVariable("id") Long subjectId
     ) {
         subjectService.deleteSubject(subjectId, principal.getId());
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/{id}/syllabus")
+    @Operation(summary = "Delete the syllabus PDF for a subject")
+    public ResponseEntity<Void> deleteSyllabus(
+            @AuthenticationPrincipal CustomUserDetails principal,
+            @PathVariable("id") Long subjectId
+    ) {
+        subjectService.deleteSyllabus(subjectId, principal.getId());
         return ResponseEntity.noContent().build();
     }
 

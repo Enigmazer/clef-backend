@@ -27,8 +27,8 @@ public class TopicMaterial {
     @Column(nullable = false, length = 255)
     private String title;
 
-    @Column(columnDefinition = "TEXT", nullable = false)
-    private String url;
+    @Column(name = "topic_material_key", columnDefinition = "TEXT", nullable = false)
+    private String topicMaterialKey;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 50)

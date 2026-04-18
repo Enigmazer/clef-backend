@@ -3,6 +3,7 @@ package com.enigmazer.clef.service.subject;
 import com.enigmazer.clef.dto.enrollment.EnrolledStudentResponse;
 import com.enigmazer.clef.dto.subject.*;
 import com.enigmazer.clef.dto.unit.UnitCreationRequest;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -27,13 +28,15 @@ public interface SubjectService {
 
     boolean toggleSubjectArchive(Long subjectId, Long teacherId); // returns new archive state
 
-    String setSyllabusUrl(Long subjectId, String syllabusUrl, Long teacherId);
+    String uploadSyllabus(Long subjectId, MultipartFile file, Long teacherId);
 
     SubjectCurrentNextTopicResponse setCurrentTopic(Long subjectId, SubjectCurrentNextTopicRequest request, Long teacherId);
 
     SubjectCurrentNextTopicResponse setNextTopic(Long subjectId, SubjectCurrentNextTopicRequest request, Long teacherId);
 
     void deleteSubject(Long subjectId, Long teacherId);
+
+    void deleteSyllabus(Long subjectId, Long teacherId);
 
     SubjectDetailsStudentResponse joinSubject(String joinCode, Long studentId);
 

@@ -19,7 +19,6 @@ CREATE TABLE users (
     password VARCHAR(255),
     full_name VARCHAR(100) NOT NULL,
     avatar_url TEXT,
-    avatar_key TEXT,
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     two_factor_enabled BOOLEAN NOT NULL DEFAULT FALSE,
     show_phone_to_students BOOLEAN NOT NULL DEFAULT FALSE,
@@ -57,7 +56,6 @@ CREATE TABLE subjects (
     name VARCHAR(255) NOT NULL,
     description TEXT,
     join_code VARCHAR(10) CONSTRAINT uq_subjects_join_code UNIQUE NOT NULL,
-    syllabus_file_url TEXT,
     syllabus_key TEXT,
     current_topic_id BIGINT,
     next_topic_id BIGINT,
@@ -107,9 +105,9 @@ CREATE TABLE topic_materials (
     id BIGSERIAL CONSTRAINT pk_topic_materials PRIMARY KEY,
     topic_id BIGINT NOT NULL CONSTRAINT fk_topic_materials_topic REFERENCES topics(id) ON DELETE CASCADE,
     title VARCHAR(255) NOT NULL,
-    url TEXT NOT NULL,
-    type VARCHAR(25) NOT NULL CONSTRAINT chk_topic_materials_type
-                                        CHECK (type IN ('PDF', 'DOC', 'VIDEO', 'IMAGE', 'LINK')),
+    topic_material_key TEXT NOT NULL,
+    type VARCHAR(25) NOT NULL CONSTRAINT chk_topic_materials_type -- todo add links support
+                                        CHECK (type IN ( 'AUDIO', 'VIDEO', 'PDF', 'IMAGE', 'DOCUMENT')),
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 

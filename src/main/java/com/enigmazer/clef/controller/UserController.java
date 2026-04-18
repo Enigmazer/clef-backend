@@ -7,10 +7,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PatchMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequiredArgsConstructor
@@ -52,5 +50,23 @@ public class UserController {
     ){
         return ResponseEntity.ok()
                 .body(userService.toggleUserTeacherSectionVisibility(principal.getId()));
+    }
+
+    @PatchMapping("/avatar")
+    public ResponseEntity<String> uploadAvatar(
+            @AuthenticationPrincipal CustomUserDetails principal,
+            @RequestParam("file") MultipartFile file
+    ){
+        return ResponseEntity.ok()
+                .body(userService.uploadAvatar(principal.getId(), file));
+    }
+
+    // --- Delete Mapping ---
+    @DeleteMapping("/avatar")
+    public ResponseEntity<Void> deleteAvatar(
+            @AuthenticationPrincipal CustomUserDetails principal
+    ){
+        userService.deleteUserAvatar(principal.getId());
+        return ResponseEntity.noContent().build();
     }
 }

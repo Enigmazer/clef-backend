@@ -5,6 +5,7 @@ import com.enigmazer.clef.dto.topic.TopicUpdateRequest;
 import com.enigmazer.clef.dto.topic.TopicUpdateResponse;
 import com.enigmazer.clef.entity.Subject;
 import com.enigmazer.clef.entity.Topic;
+import com.enigmazer.clef.entity.TopicMaterial;
 import com.enigmazer.clef.exception.ResourceAlreadyExistsException;
 import com.enigmazer.clef.exception.ResourceNotFoundException;
 import com.enigmazer.clef.mapper.SimpleTopicMapper;
@@ -12,6 +13,7 @@ import com.enigmazer.clef.mapper.TopicMapper;
 import com.enigmazer.clef.repository.SubjectRepository;
 import com.enigmazer.clef.repository.TopicRepository;
 import com.enigmazer.clef.service.common.SubjectHelper;
+import com.enigmazer.clef.service.storage.StorageService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -21,14 +23,18 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
+import java.util.Set;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class TopicServiceImpl implements TopicService{
-    private final SubjectRepository subjectRepository;
 
+    private final SubjectRepository subjectRepository;
     private final TopicRepository topicRepository;
+
+    private final StorageService storageService;
 
     private final TopicMapper topicMapper;
     private final SimpleTopicMapper simpleTopicMapper;
@@ -37,7 +43,7 @@ public class TopicServiceImpl implements TopicService{
 
     @Override
     @Transactional
-    public List<TopicUpdateResponse> updateTopic(
+    public List<TopicUpdateResponse> updateTopics(
             Long subjectId, Long unitId,
             List<TopicUpdateRequest> request, Long teacherId
     ) {
@@ -49,7 +55,7 @@ public class TopicServiceImpl implements TopicService{
 
         for(TopicUpdateRequest updatedTopic : request) {
             Topic topic = topicRepository
-                    .findByIdAndUnitIdAndSubjectId(updatedTopic.topicId(), unitId, subjectId)
+                    .findByIdAndParentValidation(updatedTopic.topicId(), unitId, subjectId)
                     .orElseThrow(() -> new ResourceNotFoundException("Topic not found"));
 
             try {
@@ -75,11 +81,12 @@ public class TopicServiceImpl implements TopicService{
             Long subjectId, Long unitId,
             Long topicId, Long teacherId
     ) {
-        Subject subject = subjectHelper.findSubjectByIdAndTeacherIdWithTopics(subjectId, teacherId);
+        Subject subject = subjectRepository.findWithCurrentAndNextTopicByIdAndTeacherId(subjectId, teacherId)
+                .orElseThrow(() -> new ResourceNotFoundException("Subject not found"));
 
         subjectHelper.checkArchived(subject);
 
-        Topic topic = topicRepository.findByIdAndUnitIdAndSubjectId(topicId, unitId, subjectId)
+        Topic topic = topicRepository.findByIdAndParentValidation(topicId, unitId, subjectId)
                 .orElseThrow(() -> new ResourceNotFoundException("Topic not found"));
 
         if(topic.getCompletedAt() == null) {
@@ -104,23 +111,57 @@ public class TopicServiceImpl implements TopicService{
 
     @Override
     @Transactional
-    public void deleteTopic(Long subjectId, Long unitId, List<Long> topicIds, Long teacherId) {
+    public void deleteTopics(Long subjectId, Long unitId, List<Long> topicIds, Long teacherId) {
         Subject subject = subjectHelper.findSubjectByIdAndTeacherId(subjectId, teacherId);
 
         subjectHelper.checkArchived(subject);
 
-        for (Long topicId : topicIds) {
-            Topic topic = topicRepository.findByIdAndUnitIdAndSubjectId(topicId, unitId, subjectId)
-                    .orElseThrow(() -> new ResourceNotFoundException("Topic not found"));
+        List<String> topicMaterialKeys = new ArrayList<>();
 
-            if ((subject.getCurrentTopic() != null && subject.getCurrentTopic().getId().equals(topicId)) ||
-                    (subject.getNextTopic() != null && subject.getNextTopic().getId().equals(topicId))) {
-                log.warn("Deleted topic was set as current or next topic " +
-                        "[subjectId={}, topicId={}]", subjectId, topicId);
+        List<Topic> topics = topicRepository
+                .findWithTopicMaterialsByIdsAndParentValidation(topicIds, unitId, subjectId);
+
+        if(topics.isEmpty() || topics.size() != topicIds.size()){
+            throw new ResourceNotFoundException("Topic(s) not found");
+        }
+
+        boolean currentAffected = false;
+        boolean nextAffected = false;
+        Long topicId = null;
+
+        for (Topic topic : topics){
+
+            if ((subject.getCurrentTopic() != null && subject.getCurrentTopic().equals(topic))){
+                currentAffected = true;
+                topicId = topic.getId();
+            }
+            if ((subject.getNextTopic() != null && subject.getNextTopic().equals(topic))) {
+                nextAffected = true;
+                topicId = topic.getId();
             }
 
-            topicRepository.delete(topic);
+            Set<TopicMaterial> topicMaterials = topic.getTopicMaterials();
+            topicMaterialKeys.addAll(
+                    topicMaterials.stream()
+                            .map(TopicMaterial::getTopicMaterialKey)
+                            .filter(Objects::nonNull).toList()
+            );
         }
+
+        if (currentAffected || nextAffected) {
+            if (currentAffected) subject.setCurrentTopic(null);
+            if (nextAffected) subject.setNextTopic(null);
+            subjectRepository.save(subject);
+            log.warn("Deleted topic was set as current or next topic, pointers cleared " +
+                    "[subjectId={}, topicId={}]", subjectId, topicId);
+        }
+
+        if(!topicMaterialKeys.isEmpty()){
+            storageService.deleteTopicMaterials(topicMaterialKeys);
+        }
+
+        topicRepository.deleteAll(topics);
+
         log.info("Successfully deleted topics [subjectId={}, unitId={}, " +
                 "topicCount={}, teacherId={}]", subjectId, unitId, topicIds.size(), teacherId);
     }
@@ -152,7 +193,7 @@ public class TopicServiceImpl implements TopicService{
 
     private Topic getNewNextTopicAfter(Topic topic, Long currentId){
         Topic newNextTopic = topicRepository
-                .findByOrderIndexAndUnitIdAndSubjectId(
+                .findByOrderIndexAndParentValidation(
                         topic.getOrderIndex() + 1,
                         topic.getUnit().getId(),
                         topic.getUnit().getSubject().getId(),

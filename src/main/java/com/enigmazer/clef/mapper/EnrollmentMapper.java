@@ -19,6 +19,7 @@ public interface EnrollmentMapper {
     @Mapping(source = "subject.name", target = "name")
     @Mapping(source = "subject.description", target = "description")
     @Mapping(source = "subject.teacher.fullName", target = "teacherName")
+    @Mapping(source = "subject.teacher.avatarUrl", target = "teacherAvatarUrl")
     @Mapping(source = "joinedAt", target = "joinedAt")
     ListStudentSubjectsResponse toStudentSummary(Enrollment enrollment);
 }
