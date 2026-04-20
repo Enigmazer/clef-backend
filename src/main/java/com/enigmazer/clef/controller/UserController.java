@@ -3,6 +3,7 @@ package com.enigmazer.clef.controller;
 import com.enigmazer.clef.config.security.CustomUserDetails;
 import com.enigmazer.clef.dto.user.UserResponse;
 import com.enigmazer.clef.service.user.UserService;
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -20,6 +21,7 @@ public class UserController {
 
     // --- Get one mapping ---
     @GetMapping("/me")
+    @Operation(summary = "Return the info of currently logged in user")
     public ResponseEntity<UserResponse> getMe(
             @AuthenticationPrincipal CustomUserDetails principal
     ){
@@ -29,6 +31,7 @@ public class UserController {
 
     // --- Patch Mapping ---
     @PatchMapping("/preferences/phone-visibility/toggle")
+    @Operation(summary = "Toggle the visibility of users phone number to students")
     public ResponseEntity<Boolean> toggleUserPhoneVisibility(
             @AuthenticationPrincipal CustomUserDetails principal
     ){
@@ -37,6 +40,7 @@ public class UserController {
     }
 
     @PatchMapping("/preferences/student-section-visibility/toggle")
+    @Operation(summary = "Toggle the visibility of user's student section in frontend")
     public ResponseEntity<Boolean> toggleUserStudentSectionVisibility(
             @AuthenticationPrincipal CustomUserDetails principal
     ){
@@ -45,6 +49,7 @@ public class UserController {
     }
 
     @PatchMapping("/preferences/teacher-section-visibility/toggle")
+    @Operation(summary = "Toggle the visibility of user's teacher section in frontend")
     public ResponseEntity<Boolean> toggleUserTeacherSectionVisibility(
             @AuthenticationPrincipal CustomUserDetails principal
     ){
@@ -53,6 +58,7 @@ public class UserController {
     }
 
     @PatchMapping("/avatar")
+    @Operation(summary = "Upload a new avatar(profile picture)")
     public ResponseEntity<String> uploadAvatar(
             @AuthenticationPrincipal CustomUserDetails principal,
             @RequestParam("file") MultipartFile file
@@ -63,6 +69,7 @@ public class UserController {
 
     // --- Delete Mapping ---
     @DeleteMapping("/avatar")
+    @Operation(summary = "Delete the avatar(profile picture)")
     public ResponseEntity<Void> deleteAvatar(
             @AuthenticationPrincipal CustomUserDetails principal
     ){

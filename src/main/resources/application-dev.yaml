@@ -1,8 +1,6 @@
 spring:
   datasource:
     url: ${DB_URL}
-    username: ${DB_USERNAME}
-    password: ${DB_PASSWORD}
 
   flyway:
     baseline-on-migrate: false
@@ -22,10 +20,10 @@ logging:
 jwt:
   temp:
     cookie:
-      expiration: ${JWT_TEMP_COOKIE_EXPIRATION:5m}
+      expiration: 5m
   access:
     cookie:
-      expiration: ${JWT_ACCESS_COOKIE_EXPIRATION:15m}
+      expiration: 1d
   refresh:
     cookie:
-      expiration: ${JWT_REFRESH_COOKIE_EXPIRATION:7d}
+      expiration: 7d

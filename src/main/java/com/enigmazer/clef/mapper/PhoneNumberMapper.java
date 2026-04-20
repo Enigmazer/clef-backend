@@ -1,5 +1,6 @@
 package com.enigmazer.clef.mapper;
 
+import com.enigmazer.clef.dto.phone.PhoneNumberStudentResponse;
 import com.enigmazer.clef.dto.phone.PhoneResponse;
 import com.enigmazer.clef.entity.PhoneNumber;
 import org.mapstruct.Mapper;

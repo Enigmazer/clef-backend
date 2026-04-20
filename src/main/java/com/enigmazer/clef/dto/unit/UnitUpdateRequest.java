@@ -6,7 +6,6 @@ import jakarta.validation.constraints.NotNull;
 import java.util.List;
 
 public record UnitUpdateRequest (
-
         String title,
         @NotNull
         List<TopicCreationUpdateRequest> topics

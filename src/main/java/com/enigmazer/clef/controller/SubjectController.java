@@ -4,7 +4,10 @@ import com.enigmazer.clef.config.security.CustomUserDetails;
 import com.enigmazer.clef.dto.enrollment.EnrolledStudentResponse;
 import com.enigmazer.clef.dto.subject.*;
 import com.enigmazer.clef.dto.unit.UnitCreationRequest;
+import com.enigmazer.clef.dto.unit.UnitParseResponse;
+import com.enigmazer.clef.dto.user.TeacherProfileResponse;
 import com.enigmazer.clef.service.subject.SubjectService;
+import io.swagger.v3.core.util.Json;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -78,6 +81,17 @@ public class SubjectController {
                 .body(subjectService.listEnrolledStudents(subjectId, principal.getId()));
     }
 
+    @GetMapping("{id}/parse")
+    @Operation(summary = "Parse the syllabus from syllabus pdf")
+    public ResponseEntity<List<UnitParseResponse>> parseSyllabus(
+            @AuthenticationPrincipal CustomUserDetails principal,
+            @PathVariable("id") Long subjectId
+    ){
+        List<UnitParseResponse> unitParseResponses = subjectService
+                .parseSyllabus(subjectId, principal.getId());
+        return ResponseEntity.ok().body(unitParseResponses);
+    }
+
     // --- Get one Operations ---
     @GetMapping("/{id}/teacher")
     @Operation(summary = "Get subject details for the teacher")
@@ -97,6 +111,27 @@ public class SubjectController {
     ){
         return ResponseEntity.ok()
                 .body(subjectService.getStudentSubjectDetails(subjectId, principal.getId()));
+    }
+
+    @GetMapping("/{id}/teacher/profile")
+    @Operation(summary = "Get profile of this subject's tutor")
+    public ResponseEntity<TeacherProfileResponse> getTeacherProfile(
+            @AuthenticationPrincipal CustomUserDetails principal,
+            @PathVariable("id") Long subjectId
+    ){
+        return ResponseEntity.ok()
+                .body(subjectService.getTeacherProfile(subjectId, principal.getId()));
+    }
+
+    @GetMapping("/{id}/syllabus")
+    @Operation(summary = "Get topic material url if you are teacher or student of the subject")
+    public ResponseEntity<Map<String, String>> getSyllabusUrl(
+            @AuthenticationPrincipal CustomUserDetails principal,
+            @PathVariable("id") Long subjectId
+    ){
+        String syllabusUrl = subjectService.getSyllabusUrl(subjectId, principal.getId());
+        return ResponseEntity.ok()
+                .body(Map.of("syllabusUrl", syllabusUrl));
     }
 
     // --- Patch Operations ---

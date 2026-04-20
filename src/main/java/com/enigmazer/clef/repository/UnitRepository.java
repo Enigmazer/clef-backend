@@ -7,6 +7,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -25,5 +26,12 @@ public interface UnitRepository extends JpaRepository<Unit, Long> {
             "WHERE u.id = :unitId AND u.subject.id = :subjectId")
     Optional<Unit> findWithTopicsByIdAndSubjectId(
             @Param("unitId") Long unitId,
+            @Param("subjectId") Long subjectId);
+
+    @Transactional(readOnly = true)
+    @Query("SELECT u FROM Unit u " +
+            "LEFT JOIN FETCH u.topics " +
+            "WHERE u.subject.id = :subjectId")
+    List<Unit> findWithTopicsBySubjectId(
             @Param("subjectId") Long subjectId);
 }

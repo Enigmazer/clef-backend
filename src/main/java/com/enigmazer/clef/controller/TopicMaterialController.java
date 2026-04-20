@@ -23,7 +23,7 @@ public class TopicMaterialController {
 
     // --- Get One Operations
     @GetMapping("/{id}")
-    @Operation(summary = "Get topic material url if you are teacher or student of the subject.")
+    @Operation(summary = "Get topic material url if you are teacher or student of the subject")
     public ResponseEntity<Map<String, String>> getTopicMaterialUrl(
             @AuthenticationPrincipal CustomUserDetails principal,
             @PathVariable Long subjectId,

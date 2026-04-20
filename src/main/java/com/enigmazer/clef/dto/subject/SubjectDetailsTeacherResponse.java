@@ -19,9 +19,6 @@ public record SubjectDetailsTeacherResponse(
         @Schema(description = "The unique 6-character code students use to enroll.")
         String joinCode,
 
-        @Schema(description = "URL to the syllabus file, if provided.")
-        String syllabusFileUrl,
-
         @Schema(description = "All the units and there topics of this subject.")
         List<UnitDetailResponse> units,
 
@@ -30,6 +27,8 @@ public record SubjectDetailsTeacherResponse(
 
         @Schema(description = "The topic that will be taught Topic next by the teacher.")
         SubjectCurrentNextTopicResponse nextTopic,
+
+        boolean isSyllabusPdfAvailable,
 
         @Schema(description = "Indicates if new enrollments are locked by the teacher.")
         boolean locked,

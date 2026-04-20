@@ -3,6 +3,8 @@ package com.enigmazer.clef.service.subject;
 import com.enigmazer.clef.dto.enrollment.EnrolledStudentResponse;
 import com.enigmazer.clef.dto.subject.*;
 import com.enigmazer.clef.dto.unit.UnitCreationRequest;
+import com.enigmazer.clef.dto.unit.UnitParseResponse;
+import com.enigmazer.clef.dto.user.TeacherProfileResponse;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
@@ -18,12 +20,18 @@ public interface SubjectService {
 
     List<EnrolledStudentResponse> listEnrolledStudents(Long subjectId, Long teacherId);
 
+    List<UnitParseResponse> parseSyllabus(Long subjectId, Long teacherId);
+
     SubjectDetailsTeacherResponse getTeacherSubjectDetails(Long subjectId, Long teacherId);
 
     SubjectDetailsStudentResponse getStudentSubjectDetails(Long subjectId, Long studentId);
 
+    TeacherProfileResponse getTeacherProfile(Long subjectId, Long studentId);
+
+    String getSyllabusUrl(Long subjectId, Long userId);
+
     SubjectUpdateReqRes updateSubject(Long subjectId, SubjectUpdateReqRes request, Long teacherId);
-    
+
     boolean toggleSubjectLock(Long subjectId, Long teacherId); // returns new lock state
 
     boolean toggleSubjectArchive(Long subjectId, Long teacherId); // returns new archive state
