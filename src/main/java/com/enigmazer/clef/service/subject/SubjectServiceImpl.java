@@ -1,6 +1,8 @@
 package com.enigmazer.clef.service.subject;
 
 import com.enigmazer.clef.dto.enrollment.EnrolledStudentResponse;
+import com.enigmazer.clef.dto.homework.HomeworkCreationRequest;
+import com.enigmazer.clef.dto.homework.HomeworkResponse;
 import com.enigmazer.clef.dto.subject.*;
 import com.enigmazer.clef.dto.topic.TopicCreationUpdateRequest;
 import com.enigmazer.clef.dto.unit.UnitCreationRequest;
@@ -11,13 +13,11 @@ import com.enigmazer.clef.exception.BusinessException;
 import com.enigmazer.clef.exception.InvalidRequestException;
 import com.enigmazer.clef.exception.ResourceAlreadyExistsException;
 import com.enigmazer.clef.exception.ResourceNotFoundException;
-import com.enigmazer.clef.mapper.EnrollmentMapper;
-import com.enigmazer.clef.mapper.SubjectMapper;
-import com.enigmazer.clef.mapper.TopicMapper;
-import com.enigmazer.clef.mapper.UserMapper;
+import com.enigmazer.clef.mapper.*;
 import com.enigmazer.clef.repository.*;
 import com.enigmazer.clef.service.common.SubjectHelper;
 import com.enigmazer.clef.service.gemini.GeminiService;
+import com.enigmazer.clef.service.page.PageResponse;
 import com.enigmazer.clef.service.storage.StorageService;
 import com.enigmazer.clef.util.JoinCodeGenerator;
 import com.fasterxml.jackson.core.JacksonException;
@@ -26,10 +26,16 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.Instant;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -37,6 +43,7 @@ import java.util.Set;
 @Slf4j
 @Service
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class SubjectServiceImpl implements SubjectService {
 
     private final SubjectRepository subjectRepository;
@@ -44,6 +51,7 @@ public class SubjectServiceImpl implements SubjectService {
     private final TopicRepository topicRepository;
     private final UserRepository userRepository;
     private final EnrollmentRepository enrollmentRepository;
+    private final HomeWorkRepository homeWorkRepository;
 
     private final StorageService storageService;
     private final GeminiService geminiService;
@@ -52,6 +60,7 @@ public class SubjectServiceImpl implements SubjectService {
     private final TopicMapper topicMapper;
     private final EnrollmentMapper enrollmentMapper;
     private final UserMapper userMapper;
+    private final HomeworkMapper homeworkMapper;
 
     private final ObjectMapper objectMapper;
 
@@ -72,12 +81,42 @@ public class SubjectServiceImpl implements SubjectService {
                     savedSubject.getName(), savedSubject.getId(), teacherId);
             return subjectMapper.toTeacherResponse(savedSubject);
         }catch (DataIntegrityViolationException ex) {
+            log.error("Subject not created [teacherId={} exMessage={}]", teacherId, ex.getMessage());
             throw new ResourceAlreadyExistsException("Subject " + request.name() + " already exists");
         }
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
+    public HomeworkResponse createHomework(Long subjectId, HomeworkCreationRequest request, Long teacherId) {
+        Subject subject = subjectHelper.findSubjectByIdAndTeacherId(subjectId, teacherId);
+
+        subjectHelper.checkArchived(subject);
+
+        Set<Topic> topics = new LinkedHashSet<>();
+        if(request.topicIds() != null){
+            topics = topicRepository.findByIdsAndSubjectId(request.topicIds(), subjectId);
+            if(topics.size() != request.topicIds().size()){
+                throw new ResourceNotFoundException("Topic(s) not found");
+            }
+        }
+
+        Homework homework = homeWorkRepository.save(
+                Homework.builder()
+                .title(request.title())
+                .description(request.description())
+                .subject(subject)
+                .topics(topics)
+                .dueDate(request.dueDate())
+                .build()
+        );
+
+        log.info("Homework created [homeworkId={}, teacherId={}]",
+                    homework.getId(), teacherId);
+        return homeworkMapper.toResponse(homework);
+    }
+
+    @Override
     public List<ListTeacherSubjectsResponse> listTeacherSubjects(Long teacherId) {
         log.debug("Returned all subjects [teacherId={}]", teacherId);
         return subjectRepository.findAllByTeacherIdAndIsArchivedFalse(teacherId)
@@ -86,7 +125,6 @@ public class SubjectServiceImpl implements SubjectService {
                 .toList();
     }
 
-    @Transactional(readOnly = true)
     @Override
     public List<ListTeacherSubjectsResponse> listArchivedTeacherSubjects(Long teacherId) {
         log.debug("Returned all archived subjects [teacherId={}]", teacherId);
@@ -97,7 +135,6 @@ public class SubjectServiceImpl implements SubjectService {
     }
 
     @Override
-    @Transactional(readOnly = true)
     public List<ListStudentSubjectsResponse> listStudentSubjects(Long studentId) {
         log.debug("Returned all subjects [studentId={}]", studentId);
         return enrollmentRepository.findAllStudentEnrollments(studentId)
@@ -107,7 +144,29 @@ public class SubjectServiceImpl implements SubjectService {
     }
 
     @Override
-    @Transactional(readOnly = true)
+    public PageResponse<HomeworkResponse> getHomeWorkPage(
+            Long subjectId, String filter, int page, Long userId
+    ) {
+        Subject subject = subjectRepository.findSubjectByIdAndUserId(subjectId, userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Subject not found"));
+
+        boolean isUpcoming = filter.equals("upcoming");
+
+        Sort sort = isUpcoming ?
+                Sort.by(Sort.Direction.ASC, "dueDate") :
+                Sort.by(Sort.Direction.DESC, "dueDate");
+        Pageable pageable = PageRequest.of(page, 10, sort);
+
+        Instant now = Instant.now();
+
+        Page<Homework> homework = isUpcoming ?
+                homeWorkRepository.findUpcomingHomeworkBySubject(subject, now, pageable)
+                : homeWorkRepository.findPastHomeworkBySubject(subject, now, pageable);
+
+        return PageResponse.from(homework.map(homeworkMapper::toResponse));
+    }
+
+    @Override
     public List<EnrolledStudentResponse> listEnrolledStudents(Long subjectId, Long teacherId) {
         if (!subjectRepository.existsByIdAndTeacherId(subjectId, teacherId)) {
             throw new ResourceNotFoundException("Subject not found");
@@ -155,7 +214,6 @@ public class SubjectServiceImpl implements SubjectService {
 
 
     @Override
-    @Transactional(readOnly = true)
     public SubjectDetailsTeacherResponse getTeacherSubjectDetails(Long subjectId, Long teacherId) {
         Subject subject = subjectRepository.findSubjectDetailByIdAndTeacherId(subjectId, teacherId)
                 .orElseThrow(() -> new ResourceNotFoundException("Subject not found"));
@@ -165,7 +223,6 @@ public class SubjectServiceImpl implements SubjectService {
     }
 
     @Override
-    @Transactional(readOnly = true)
     public SubjectDetailsStudentResponse getStudentSubjectDetails(Long subjectId, Long studentId) {
 
         Subject subject = subjectRepository.findSubjectDetailByIdAndStudentId(subjectId, studentId)
@@ -176,7 +233,6 @@ public class SubjectServiceImpl implements SubjectService {
     }
 
     @Override
-    @Transactional(readOnly = true)
     public TeacherProfileResponse getTeacherProfile(Long subjectId, Long studentId) {
         User teacher = subjectRepository.findTeacherByIdAndStudentId(subjectId, studentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Profile not found"));
@@ -186,7 +242,6 @@ public class SubjectServiceImpl implements SubjectService {
     }
 
     @Override
-    @Transactional(readOnly = true)
     public String getSyllabusUrl(Long subjectId, Long userId) {
         Subject subject = subjectRepository.findSubjectByIdAndUserId(subjectId, userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Subject not found"));

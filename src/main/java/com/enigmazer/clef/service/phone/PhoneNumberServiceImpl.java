@@ -21,6 +21,7 @@ import java.util.List;
 @Slf4j
 @Service
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class PhoneNumberServiceImpl implements PhoneNumberService{
 
     @Value("${twilio.verify.service-sid}")
@@ -32,7 +33,6 @@ public class PhoneNumberServiceImpl implements PhoneNumberService{
 
     // real otp verification is disabled because of free tire limitations
     @Override
-    @Transactional
     public void sendOtp(String rawPhone, Long userId) {
         if (phoneNumberRepository.countByUserId(userId) >= 2) {
             throw new BusinessException("Maximum of 2 phone numbers allowed");
@@ -77,7 +77,6 @@ public class PhoneNumberServiceImpl implements PhoneNumberService{
     }
 
     @Override
-    @Transactional(readOnly = true)
     public List<PhoneResponse> getUserPhoneNumbers(Long userId) {
         return phoneNumberRepository.findAllByUserId(userId)
                 .stream()
@@ -129,7 +128,6 @@ public class PhoneNumberServiceImpl implements PhoneNumberService{
     }
 
     @Override
-    @Transactional
     public void send2FAOtp(Long userId){
         String number = getPrimaryPhoneNumber(userId);
 
@@ -138,7 +136,6 @@ public class PhoneNumberServiceImpl implements PhoneNumberService{
     }
 
     @Override
-    @Transactional
     public void verify2FAOtp(Long userId, String code){
         String number = getPrimaryPhoneNumber(userId);
 

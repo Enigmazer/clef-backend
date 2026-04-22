@@ -4,15 +4,15 @@ import com.enigmazer.clef.entity.TopicMaterial;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
 
-
+@Repository
 public interface TopicMaterialRepository extends JpaRepository<TopicMaterial, Long> {
 
-    @Transactional(readOnly = true)
     @Query("SELECT tm FROM TopicMaterial tm " +
             "WHERE tm.id IN (:ids) " +
             "AND tm.topic.id = :topicId " +
@@ -26,7 +26,6 @@ public interface TopicMaterialRepository extends JpaRepository<TopicMaterial, Lo
             @Param("subjectId") Long subjectId
     );
 
-    @Transactional(readOnly = true)
     @Query("SELECT tm FROM TopicMaterial tm " +
             "WHERE tm.id = :id " +
             "AND tm.topic.id = :topicId " +

@@ -16,6 +16,7 @@ import org.springframework.web.multipart.MultipartFile;
 @Slf4j
 @Service
 @AllArgsConstructor
+@Transactional(readOnly = true)
 public class UserServiceImpl implements UserService{
 
     private final UserRepository userRepository;
@@ -25,7 +26,6 @@ public class UserServiceImpl implements UserService{
     private final UserMapper userMapper;
 
     @Override
-    @Transactional(readOnly = true)
     public UserResponse getCurrentUser(Long userId) {
 
         User user = userRepository.findById(userId).orElseThrow(

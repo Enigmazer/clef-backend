@@ -88,7 +88,6 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
         String providerId;
         String email;
         String name;
-        String avatarUrl;
 
         if ("google".equals(providerString)) {
             providerId = getProviderId(oAuth2User.getAttribute("sub"), providerEnum.toString());
@@ -97,7 +96,6 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
             if (name == null || name.isBlank()) {
                 name = email.substring(0, email.indexOf("@"));
             }
-            avatarUrl = oAuth2User.getAttribute("picture");
 
         } else if ("github".equals(providerString)) {
             providerId = getProviderId(String.valueOf(attributes.get("id")), providerEnum.toString());
@@ -106,7 +104,6 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
             if (name == null || name.isBlank()) {
                 name = oAuth2User.getAttribute("login");
             }
-            avatarUrl = oAuth2User.getAttribute("avatar_url");
 
         } else {
             throw new OAuth2AuthenticationException(
@@ -120,7 +117,6 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
                 .providerId(providerId)
                 .email(email)
                 .name(name)
-                .avatarUrl(avatarUrl)
                 .build();
     }
 
@@ -205,7 +201,6 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
         return userRepository.save(User.builder()
                 .fullName(userInfo.name())
                 .email(userInfo.email())
-                .avatarUrl(userInfo.avatarUrl())
                 .role(userRole)
                 .build()
         );

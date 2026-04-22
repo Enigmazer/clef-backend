@@ -18,7 +18,6 @@ public interface SubjectRepository extends JpaRepository<Subject, Long> {
 
     Optional<Subject> findByIdAndTeacherId(Long subjectId, Long teacherId);
 
-    @Transactional(readOnly = true)
     @Query("SELECT s FROM Subject s " +
             "LEFT JOIN FETCH s.currentTopic ct " +
             "LEFT JOIN FETCH ct.unit " +
@@ -30,7 +29,6 @@ public interface SubjectRepository extends JpaRepository<Subject, Long> {
             @Param("teacherId") Long teacherId
     );
 
-    @Transactional(readOnly = true)
     @Query("SELECT s FROM Subject s " +
             "LEFT JOIN FETCH s.units u " +
             "LEFT JOIN FETCH u.topics t " +
@@ -46,7 +44,6 @@ public interface SubjectRepository extends JpaRepository<Subject, Long> {
 
     List<Subject> findAllByTeacherIdAndIsArchivedTrue(Long teacherId);
 
-    @Transactional(readOnly = true)
     @Query("SELECT s FROM Subject s " +
             "LEFT JOIN FETCH s.units u " +
             "LEFT JOIN FETCH u.topics t " +
@@ -57,7 +54,6 @@ public interface SubjectRepository extends JpaRepository<Subject, Long> {
             @Param("teacherId") Long teacherId
     );
 
-    @Transactional(readOnly = true)
     @Query("SELECT s FROM Subject s " +
             "LEFT JOIN FETCH s.units u " +
             "LEFT JOIN FETCH u.topics t " +
@@ -74,7 +70,6 @@ public interface SubjectRepository extends JpaRepository<Subject, Long> {
             @Param("studentId") Long studentId
     );
 
-    @Transactional(readOnly = true)
     @Query("SELECT t FROM Subject s " +
             "JOIN s.teacher t " +
             "LEFT JOIN FETCH t.phoneNumbers " +
@@ -90,7 +85,6 @@ public interface SubjectRepository extends JpaRepository<Subject, Long> {
             @Param("studentId") Long studentId
     );
 
-    @Transactional(readOnly = true)
     @Query("SELECT s FROM Subject s " +
             "WHERE s.id = :id " +
             "AND (s.teacher.id = :userId " +

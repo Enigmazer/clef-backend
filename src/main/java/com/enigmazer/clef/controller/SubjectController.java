@@ -2,12 +2,14 @@ package com.enigmazer.clef.controller;
 
 import com.enigmazer.clef.config.security.CustomUserDetails;
 import com.enigmazer.clef.dto.enrollment.EnrolledStudentResponse;
+import com.enigmazer.clef.dto.homework.HomeworkCreationRequest;
+import com.enigmazer.clef.dto.homework.HomeworkResponse;
 import com.enigmazer.clef.dto.subject.*;
 import com.enigmazer.clef.dto.unit.UnitCreationRequest;
 import com.enigmazer.clef.dto.unit.UnitParseResponse;
 import com.enigmazer.clef.dto.user.TeacherProfileResponse;
+import com.enigmazer.clef.service.page.PageResponse;
 import com.enigmazer.clef.service.subject.SubjectService;
-import io.swagger.v3.core.util.Json;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -43,6 +45,17 @@ public class SubjectController {
                 .body(subjectService.createSubject(request, principal.getId()));
     }
 
+    @PostMapping("/{id}/homework")
+    @Operation(summary = "Create homework for the subject")
+    public ResponseEntity<HomeworkResponse> createHomework(
+            @AuthenticationPrincipal CustomUserDetails principal,
+            @PathVariable("id") Long subjectId,
+            @Valid @RequestBody HomeworkCreationRequest request
+    ){
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(subjectService.createHomework(subjectId, request, principal.getId()));
+    }
+
     // --- Get all Operations ---
     @GetMapping("/teacher")
     @Operation(summary = "List all the unarchived subjects created by the teacher")
@@ -69,6 +82,18 @@ public class SubjectController {
     ){
         return ResponseEntity.ok()
                 .body(subjectService.listStudentSubjects(principal.getId()));
+    }
+
+    @GetMapping("/{id}/homework")
+    @Operation(summary = "get page of homework in this subject")
+    public ResponseEntity<PageResponse<HomeworkResponse>> getHomeWorkPage(
+            @AuthenticationPrincipal CustomUserDetails principal,
+            @PathVariable("id") Long subjectId,
+            @RequestParam(defaultValue = "upcoming") String filter,
+            @RequestParam(defaultValue = "0") int page
+    ){
+        return ResponseEntity.ok()
+                .body(subjectService.getHomeWorkPage(subjectId, filter, page, principal.getId()));
     }
 
     @GetMapping("/{id}/enrolled/students")

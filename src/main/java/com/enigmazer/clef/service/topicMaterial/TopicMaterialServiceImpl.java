@@ -20,6 +20,7 @@ import java.util.List;
 @Slf4j
 @Service
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class TopicMaterialServiceImpl implements TopicMaterialService{
 
     private final TopicMaterialRepository topicMaterialRepository;

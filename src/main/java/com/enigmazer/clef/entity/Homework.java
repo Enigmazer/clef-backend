@@ -5,8 +5,8 @@ import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.LinkedHashSet;
+import java.util.Set;
 
 @Entity
 @Table(name = "homework")
@@ -31,14 +31,15 @@ public class Homework {
     @Column(columnDefinition = "TEXT")
     private String description;
 
-    @ManyToMany
+    @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
             name = "homework_topics",
             joinColumns = @JoinColumn(name = "homework_id"),
             inverseJoinColumns = @JoinColumn(name = "topic_id")
     )
     @Builder.Default
-    private List<Topic> topics = new ArrayList<>();
+    @OrderBy("id ASC")
+    private Set<Topic> topics = new LinkedHashSet<>();
 
     @Column(name = "due_date", nullable = false)
     private Instant dueDate;

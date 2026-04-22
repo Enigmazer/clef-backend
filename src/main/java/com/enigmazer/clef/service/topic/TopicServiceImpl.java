@@ -29,6 +29,7 @@ import java.util.Set;
 @Slf4j
 @Service
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class TopicServiceImpl implements TopicService{
 
     private final SubjectRepository subjectRepository;

@@ -28,6 +28,7 @@ import java.util.Objects;
 @Slf4j
 @Service
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class UnitServiceImpl implements UnitService{
 
     private final UnitRepository unitRepository;

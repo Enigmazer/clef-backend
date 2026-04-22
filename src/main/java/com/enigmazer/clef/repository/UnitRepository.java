@@ -13,14 +13,12 @@ import java.util.Optional;
 @Repository
 public interface UnitRepository extends JpaRepository<Unit, Long> {
 
-    @Transactional(readOnly = true)
     @Query("SELECT COALESCE(MAX(u.orderIndex), 0) " +
             "FROM Unit u WHERE u.subject.id = :subjectId")
     int findMaxOrderIndex(@Param("subjectId") Long subjectId);
 
     Optional<Unit> findByIdAndSubjectId(Long unitId, Long subjectId);
 
-    @Transactional(readOnly = true)
     @Query("SELECT u FROM Unit u " +
             "LEFT JOIN FETCH u.topics " +
             "WHERE u.id = :unitId AND u.subject.id = :subjectId")
@@ -28,7 +26,6 @@ public interface UnitRepository extends JpaRepository<Unit, Long> {
             @Param("unitId") Long unitId,
             @Param("subjectId") Long subjectId);
 
-    @Transactional(readOnly = true)
     @Query("SELECT u FROM Unit u " +
             "LEFT JOIN FETCH u.topics " +
             "WHERE u.subject.id = :subjectId")
