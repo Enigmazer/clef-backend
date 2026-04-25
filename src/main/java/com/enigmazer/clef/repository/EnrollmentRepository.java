@@ -15,7 +15,7 @@ public interface EnrollmentRepository extends JpaRepository<Enrollment, Long> {
             "JOIN FETCH e.student " +
             "WHERE e.subject.id = :subjectId " +
             "AND e.subject.teacher.id = :teacherId")
-    List<Enrollment> findEnrollmentsBySubjectId(
+    List<Enrollment> findAllEnrolledStudentsBySubjectId(
             @Param("subjectId") Long subjectId,
             @Param("teacherId") Long teacherId
     );
@@ -25,7 +25,11 @@ public interface EnrollmentRepository extends JpaRepository<Enrollment, Long> {
             "JOIN FETCH s.teacher " +
             "WHERE e.student.id = :studentId " +
             "AND s.isArchived = false")
-    List<Enrollment> findAllStudentEnrollments(
+    List<Enrollment> findAllEnrolledSubjectsByStudentId(
             @Param("studentId") Long studentId
     );
+
+    boolean existsByStudentIdAndSubjectId(Long studentId, Long subjectId);
+
+    void deleteByStudentIdAndSubjectId(Long studentId, Long subjectId);
 }

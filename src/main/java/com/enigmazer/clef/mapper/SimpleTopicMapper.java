@@ -7,6 +7,7 @@ import org.mapstruct.Mapper;
 
 @Mapper(componentModel = "spring", uses = {TopicMaterialMapper.class})
 public interface SimpleTopicMapper {
+
     // Maps a Topic without its Unit
     TopicResponse toResponse(Topic topic);
 

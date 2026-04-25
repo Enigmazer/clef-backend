@@ -9,16 +9,18 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Map;
 
+@Validated
 @RestController
-@RequestMapping("/phone")
 @RequiredArgsConstructor
+@RequestMapping("/phone")
 @Tag(name = "Phone number Management")
 public class PhoneNumberController {
 
@@ -27,24 +29,24 @@ public class PhoneNumberController {
     // --- OTP Verification ---
     @PostMapping("/send-otp")
     @Operation(summary = "Send phone number verification otp")
-    public ResponseEntity<Map<String,String>> sendOtp(
-            @Valid @RequestBody SendOtpRequest request,
-            @AuthenticationPrincipal CustomUserDetails principal
+    public ResponseEntity<Void> sendOtp(
+            @AuthenticationPrincipal CustomUserDetails principal,
+            @Valid @RequestBody SendOtpRequest request
     ) {
         phoneNumberService.sendOtp(request.phoneNumber(), principal.getId());
-        return ResponseEntity.ok(Map.of("message", "OTP sent"));
+        return ResponseEntity.ok().build();
     }
 
     @PostMapping("/verify-otp")
     @Operation(summary = "Verify OTP and add phone number")
-    public ResponseEntity<Map<String,String>> verifyOtp(
-            @Valid @RequestBody VerifyOtpRequest request,
-            @AuthenticationPrincipal CustomUserDetails principal
+    public ResponseEntity<Void> verifyOtp(
+            @AuthenticationPrincipal CustomUserDetails principal,
+            @Valid @RequestBody VerifyOtpRequest request
     ) {
         phoneNumberService.verifyOtp(principal.getId(),
                 request.phoneNumber(),
                 request.code());
-        return ResponseEntity.ok(Map.of("message", "Phone number verified"));
+        return ResponseEntity.status(HttpStatus.CREATED).build();
     }
 
     // --- Phone Number Management ---
@@ -54,27 +56,26 @@ public class PhoneNumberController {
             @AuthenticationPrincipal CustomUserDetails principal
     ) {
         return ResponseEntity.ok(
-                phoneNumberService.
-                        getUserPhoneNumbers(principal.getId())
+                phoneNumberService.getUserPhoneNumbers(principal.getId())
         );
     }
 
     @PostMapping("/set-primary")
     @Operation(summary = "Set secondary phone number as primary if 2fa is not enabled")
-    public ResponseEntity<Map<String,String>> setPrimaryPhone(
+    public ResponseEntity<Void> setPrimaryPhone(
             @AuthenticationPrincipal CustomUserDetails principal
     ) {
         phoneNumberService.setPrimaryPhoneNumber(principal.getId());
-        return ResponseEntity.ok(Map.of("message", "Phone Number set to primary successfully"));
+        return ResponseEntity.ok().build();
     }
 
     @DeleteMapping("/delete")
     @Operation(summary = "Delete phone number if it's not in use for 2fa")
-    public ResponseEntity<Map<String,String>> deletePhoneNumber(
-            @Valid @RequestBody SendOtpRequest request, // reusing
-            @AuthenticationPrincipal CustomUserDetails principal
+    public ResponseEntity<Void> deletePhoneNumber(
+            @AuthenticationPrincipal CustomUserDetails principal,
+            @Valid @RequestBody SendOtpRequest request // reusing
     ) {
         phoneNumberService.deleteUserPhoneNumber(request.phoneNumber(), principal.getId());
-        return ResponseEntity.ok(Map.of("message", "Phone Number deleted successfully"));
+        return ResponseEntity.noContent().build();
     }
 }

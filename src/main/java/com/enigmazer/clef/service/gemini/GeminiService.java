@@ -58,7 +58,7 @@ public class GeminiService {
 
         }catch (RestClientException e){
             log.error("Gemini API call failed [message={}]", e.getMessage());
-            throw  new BusinessException("Failed to connect to parsing service");
+            throw new BusinessException("Failed to connect to parsing service");
         }
 
         log.debug("Gemini response received successfully");

@@ -24,5 +24,4 @@ target/
 
 ### Clef ###
 /clientSecret/
-/src/main/java/com/enigmazer/clef/other/
 /.env

@@ -1,5 +1,7 @@
 package com.enigmazer.clef.service.user;
 
+import com.enigmazer.clef.dto.user.AvatarUploadResponse;
+import com.enigmazer.clef.dto.user.UserPreferenceUpdateResponse;
 import com.enigmazer.clef.dto.user.UserResponse;
 import com.enigmazer.clef.entity.User;
 import com.enigmazer.clef.exception.InvalidRequestException;
@@ -37,20 +39,19 @@ public class UserServiceImpl implements UserService{
 
     @Override
     @Transactional
-    public boolean toggleUserPhoneVisibility(Long userId) {
+    public UserPreferenceUpdateResponse toggleUserPhoneVisibility(Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new SystemResourceNotFoundException("User not found", userId));
 
         boolean newValue = !user.isShowPhoneToStudents();
         user.setShowPhoneToStudents(newValue);
-        userRepository.save(user);
         log.info("Toggled user's phone number visibility [newValue={}, userId={}]", newValue, userId);
-        return newValue;
+        return userMapper.toPreferenceUpdateResponse(user);
     }
 
     @Override
     @Transactional
-    public boolean toggleUserStudentSectionVisibility(Long userId) {
+    public UserPreferenceUpdateResponse toggleUserStudentSectionVisibility(Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new SystemResourceNotFoundException("User not found", userId));
 
@@ -60,14 +61,13 @@ public class UserServiceImpl implements UserService{
 
         boolean newValue = !user.isHideStudentSection();
         user.setHideStudentSection(newValue);
-        userRepository.save(user);
         log.info("Toggled user's student section visibility [newValue={}, userId={}]", newValue, userId);
-        return newValue;
+        return userMapper.toPreferenceUpdateResponse(user);
     }
 
     @Override
     @Transactional
-    public boolean toggleUserTeacherSectionVisibility(Long userId) {
+    public UserPreferenceUpdateResponse toggleUserTeacherSectionVisibility(Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new SystemResourceNotFoundException("User not found", userId));
 
@@ -78,14 +78,13 @@ public class UserServiceImpl implements UserService{
 
         boolean newValue = !user.isHideTeacherSection();
         user.setHideTeacherSection(newValue);
-        userRepository.save(user);
         log.info("Toggled user's teacher section visibility [newValue={}, userId={}]", newValue, userId);
-        return newValue;
+        return userMapper.toPreferenceUpdateResponse(user);
     }
 
     @Override
     @Transactional
-    public String uploadAvatar(Long userId, MultipartFile file) {
+    public AvatarUploadResponse uploadAvatar(Long userId, MultipartFile file) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new SystemResourceNotFoundException("User not found", userId));
 
@@ -96,12 +95,11 @@ public class UserServiceImpl implements UserService{
         String avatarKey = storageService.generateAvatarKey(file);
         String avatarUrl = storageService.generateAvatarUrl(avatarKey);
         user.setAvatarUrl(avatarUrl);
-        userRepository.save(user);
 
         storageService.uploadAvatar(file, avatarKey);
 
         log.info("Uploaded new avatar for user [userId={}]",userId);
-        return avatarUrl;
+        return new AvatarUploadResponse(avatarUrl);
     }
 
     @Override
@@ -113,7 +111,6 @@ public class UserServiceImpl implements UserService{
         if (user.getAvatarUrl() != null){
             deleteAvatar(user.getAvatarUrl());
             user.setAvatarUrl(null);
-            userRepository.save(user);
         }
         log.info("deleted avatar for user [userId={}]",userId);
     }

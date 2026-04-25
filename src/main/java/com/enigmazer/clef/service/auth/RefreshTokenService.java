@@ -44,6 +44,10 @@ public class RefreshTokenService {
         return randomTokenString;
     }
 
+    public Optional<RefreshToken> findByToken(String token) {
+        return refreshTokenRepository.findByToken(token);
+    }
+
     @Transactional
     public void verifyExpiration(RefreshToken token) {
         if (token.getExpiryDate().compareTo(Instant.now()) < 0) {
@@ -53,22 +57,19 @@ public class RefreshTokenService {
         }
     }
 
-    public Optional<RefreshToken> findByToken(String token) {
-        return refreshTokenRepository.findByToken(token);
+    @Transactional
+    public void deleteByToken(String refreshTokenString) {
+        refreshTokenRepository.deleteByToken(refreshTokenString);
+        log.debug("Deleted a refresh tokens");
     }
 
     @Transactional
     public void deleteByUserId(Long userId) {
         refreshTokenRepository.deleteByUserId(userId);
-        log.info("Deleted all refresh tokens for user [userId={}]", userId);
+        log.debug("Deleted all refresh tokens for user [userId={}]", userId);
     }
 
-    @Transactional
-    public void deleteByToken(String refreshTokenString) {
-        refreshTokenRepository.deleteByToken(refreshTokenString);
-    }
-
-    // This method is the only way for clearing expired refresh tokens
+    // This method is the only way for clearing uncleared expired refresh tokens
     @Scheduled(cron = "0 0 0 * * *")
     @Transactional
     public void purgeExpiredTokens() {

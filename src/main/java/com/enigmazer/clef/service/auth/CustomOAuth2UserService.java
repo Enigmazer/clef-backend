@@ -39,8 +39,9 @@ import java.util.Optional;
 public class CustomOAuth2UserService extends DefaultOAuth2UserService {
 
     private final UserRepository userRepository;
-    private final SocialAccountRepository socialAccountRepository;
     private final RoleRepository roleRepository;
+    private final SocialAccountRepository socialAccountRepository;
+
     private final RestTemplate restTemplate;
 
     @Override
@@ -69,6 +70,8 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
 
         String authorityName = "ROLE_" + user.getRole().getName().name();
 
+        log.info("Returned default oauth2 user [userId={}, role={}, " +
+                "provider={}]", user.getId(), authorityName, providerString);
         return new DefaultOAuth2User(
                 List.of(new SimpleGrantedAuthority(authorityName)),
                 Collections.singletonMap("email", user.getEmail()),

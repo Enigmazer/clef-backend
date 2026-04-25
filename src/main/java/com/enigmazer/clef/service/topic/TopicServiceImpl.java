@@ -1,6 +1,7 @@
 package com.enigmazer.clef.service.topic;
 
 import com.enigmazer.clef.dto.topic.TopicCompleteResponse;
+import com.enigmazer.clef.dto.topic.TopicDeleteRequest;
 import com.enigmazer.clef.dto.topic.TopicUpdateRequest;
 import com.enigmazer.clef.dto.topic.TopicUpdateResponse;
 import com.enigmazer.clef.entity.Subject;
@@ -16,7 +17,7 @@ import com.enigmazer.clef.service.common.SubjectHelper;
 import com.enigmazer.clef.service.storage.StorageService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,8 +33,8 @@ import java.util.Set;
 @Transactional(readOnly = true)
 public class TopicServiceImpl implements TopicService{
 
-    private final SubjectRepository subjectRepository;
     private final TopicRepository topicRepository;
+    private final SubjectRepository subjectRepository;
 
     private final StorageService storageService;
 
@@ -44,6 +45,7 @@ public class TopicServiceImpl implements TopicService{
 
     @Override
     @Transactional
+    @CacheEvict(value = "subjects", key = "#subjectId")
     public List<TopicUpdateResponse> updateTopics(
             Long subjectId, Long unitId,
             List<TopicUpdateRequest> request, Long teacherId
@@ -59,18 +61,19 @@ public class TopicServiceImpl implements TopicService{
                     .findByIdAndParentValidation(updatedTopic.topicId(), unitId, subjectId)
                     .orElseThrow(() -> new ResourceNotFoundException("Topic not found"));
 
-            try {
-                if (updatedTopic.title() != null && !updatedTopic.title().isBlank()) {
-                    topic.setTitle(updatedTopic.title());
+            if (updatedTopic.title() != null && !updatedTopic.title().isBlank()) {
+                String trimmed = updatedTopic.title().trim();
+                if (topicRepository.existsByTitleAndUnitId(trimmed, unitId)) {
+                    throw new ResourceAlreadyExistsException(
+                            "Topic " + trimmed + " already exists in this unit"
+                    );
                 }
-                updatedTopics.add(simpleTopicMapper.toUpdateResponse(topicRepository.save(topic)));
-            } catch (DataIntegrityViolationException ex) {
-                throw new ResourceAlreadyExistsException(
-                        "Topic " + updatedTopic.title() + " already exists in this unit"
-                );
+                topic.setTitle(trimmed);
             }
+            updatedTopics.add(simpleTopicMapper.toUpdateResponse(topic));
         }
 
+        subject.touch();
         log.info("Successfully updated topics [subjectId={}, unitId={}, " +
                 "topicsCount={}, teacherId={}]", subjectId, unitId, request.size(), teacherId);
         return updatedTopics;
@@ -78,11 +81,12 @@ public class TopicServiceImpl implements TopicService{
 
     @Override
     @Transactional
+    @CacheEvict(value = "subjects", key = "#subjectId")
     public TopicCompleteResponse toggleTopicComplete(
             Long subjectId, Long unitId,
             Long topicId, Long teacherId
     ) {
-        Subject subject = subjectRepository.findWithCurrentAndNextTopicByIdAndTeacherId(subjectId, teacherId)
+        Subject subject = subjectRepository.findWithCurrentNextTopicsByIdAndTeacherId(subjectId, teacherId)
                 .orElseThrow(() -> new ResourceNotFoundException("Subject not found"));
 
         subjectHelper.checkArchived(subject);
@@ -95,24 +99,23 @@ public class TopicServiceImpl implements TopicService{
 
             if (subject.getCurrentTopic() != null && subject.getCurrentTopic().equals(topic)) {
                 setNewCurrentAndNextTopics(subject);
-                subjectRepository.save(subject);
             }else if (subject.getNextTopic() != null && subject.getNextTopic().equals(topic)) {
                 setNewNextTopic(subject);
-                subjectRepository.save(subject);
             }
         }else {
             topic.setCompletedAt(null);
         }
-        Topic saved = topicRepository.save(topic);
 
+        subject.touch();
         log.info("Toggled topic complete state [subjectId={}, unitId={}, " +
-                "topicId={}, teacherId={}]", subjectId, unitId, topicId, teacherId);
-        return topicMapper.toTopicCompleteResponse(saved);
+                "id={}, teacherId={}]", subjectId, unitId, topicId, teacherId);
+        return topicMapper.toTopicCompleteResponse(topic);
     }
 
     @Override
     @Transactional
-    public void deleteTopics(Long subjectId, Long unitId, List<Long> topicIds, Long teacherId) {
+    @CacheEvict(value = "subjects", key = "#subjectId")
+    public void deleteTopics(Long subjectId, Long unitId, TopicDeleteRequest request, Long teacherId) {
         Subject subject = subjectHelper.findSubjectByIdAndTeacherId(subjectId, teacherId);
 
         subjectHelper.checkArchived(subject);
@@ -120,9 +123,9 @@ public class TopicServiceImpl implements TopicService{
         List<String> topicMaterialKeys = new ArrayList<>();
 
         List<Topic> topics = topicRepository
-                .findWithTopicMaterialsByIdsAndParentValidation(topicIds, unitId, subjectId);
+                .findWithTopicMaterialsByIdsAndParentValidation(request.topicIds(), unitId, subjectId);
 
-        if(topics.isEmpty() || topics.size() != topicIds.size()){
+        if(topics.isEmpty() || topics.size() != request.topicIds().size()){
             throw new ResourceNotFoundException("Topic(s) not found");
         }
 
@@ -152,9 +155,8 @@ public class TopicServiceImpl implements TopicService{
         if (currentAffected || nextAffected) {
             if (currentAffected) subject.setCurrentTopic(null);
             if (nextAffected) subject.setNextTopic(null);
-            subjectRepository.save(subject);
             log.warn("Deleted topic was set as current or next topic, pointers cleared " +
-                    "[subjectId={}, topicId={}]", subjectId, topicId);
+                    "[subjectId={}, id={}]", subjectId, topicId);
         }
 
         if(!topicMaterialKeys.isEmpty()){
@@ -163,8 +165,9 @@ public class TopicServiceImpl implements TopicService{
 
         topicRepository.deleteAll(topics);
 
+        subject.touch();
         log.info("Successfully deleted topics [subjectId={}, unitId={}, " +
-                "topicCount={}, teacherId={}]", subjectId, unitId, topicIds.size(), teacherId);
+                "topicCount={}, teacherId={}]", subjectId, unitId, request.topicIds().size(), teacherId);
     }
 
     // --- Helper Methods ---

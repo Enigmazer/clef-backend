@@ -14,6 +14,11 @@ import java.util.Optional;
 @Repository
 public interface PhoneNumberRepository extends JpaRepository<PhoneNumber, Long> {
 
+    @Transactional
+    @Modifying
+    @Query("UPDATE PhoneNumber p SET p.isPrimary = false WHERE p.user.id = :userId")
+    void clearPrimaryByUserId(@Param("userId") Long userId);
+
     List<PhoneNumber> findAllByUserId(Long userId);
 
     int countByUserId(Long userId);
@@ -27,9 +32,4 @@ public interface PhoneNumberRepository extends JpaRepository<PhoneNumber, Long> 
     Optional<PhoneNumber> findByUserIdAndIsPrimaryTrue(Long userId);
 
     Optional<PhoneNumber> findByUserIdAndIsPrimaryFalse(Long userId);
-
-    @Transactional
-    @Modifying
-    @Query("UPDATE PhoneNumber p SET p.isPrimary = false WHERE p.user.id = :userId")
-    void clearPrimaryByUserId(@Param("userId") Long userId);
 }

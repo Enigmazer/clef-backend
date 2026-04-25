@@ -15,7 +15,6 @@ public class SubjectHelper {
 
     private final SubjectRepository subjectRepository;
 
-
     public Subject findSubjectByIdAndTeacherId(Long subjectId, Long teacherId){
         return subjectRepository.findByIdAndTeacherId(subjectId, teacherId).orElseThrow(
                 () -> new ResourceNotFoundException("Subject not found")

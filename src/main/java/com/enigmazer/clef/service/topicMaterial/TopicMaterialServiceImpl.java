@@ -1,16 +1,21 @@
 package com.enigmazer.clef.service.topicMaterial;
 
+import com.enigmazer.clef.dto.topicMaterial.TopicMaterialDeleteRequest;
+import com.enigmazer.clef.dto.topicMaterial.TopicMaterialResponse;
+import com.enigmazer.clef.dto.topicMaterial.TopicMaterialUrlResponse;
 import com.enigmazer.clef.entity.Subject;
 import com.enigmazer.clef.entity.Topic;
 import com.enigmazer.clef.entity.TopicMaterial;
 import com.enigmazer.clef.enums.TopicMaterialType;
 import com.enigmazer.clef.exception.ResourceNotFoundException;
+import com.enigmazer.clef.mapper.TopicMaterialMapper;
 import com.enigmazer.clef.repository.TopicMaterialRepository;
 import com.enigmazer.clef.repository.TopicRepository;
 import com.enigmazer.clef.service.common.SubjectHelper;
 import com.enigmazer.clef.service.storage.StorageService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -28,11 +33,12 @@ public class TopicMaterialServiceImpl implements TopicMaterialService{
 
     private final StorageService storageService;
 
+    private final TopicMaterialMapper topicMaterialMapper;
+
     private final SubjectHelper subjectHelper;
 
     @Override
-    @Transactional
-    public String getTopicMaterialUrl(
+    public TopicMaterialUrlResponse getTopicMaterialUrl(
             Long subjectId, Long unitId, Long topicId,
             Long topicMaterialId, Long userId
     ) {
@@ -42,14 +48,16 @@ public class TopicMaterialServiceImpl implements TopicMaterialService{
                 ).orElseThrow(() -> new ResourceNotFoundException("Topic material not found"))
                 .getTopicMaterialKey();
 
+        String url = storageService.generateTopicMaterialUrl(topicMaterialKey);
         log.info("Returning url for topic material [topicMaterialId={}, " +
                 "subjectId={}, userId={}]", topicId, subjectId, userId);
-        return storageService.generateTopicMaterialUrl(topicMaterialKey);
+        return new TopicMaterialUrlResponse(url);
     }
 
     @Override
     @Transactional
-    public String uploadTopicMaterial(
+    @CacheEvict(value = "subjects", key = "#subjectId")
+    public TopicMaterialResponse uploadTopicMaterial(
             Long subjectId, Long unitId, Long topicId,
             MultipartFile file, Long teacherId
     ) {
@@ -65,7 +73,7 @@ public class TopicMaterialServiceImpl implements TopicMaterialService{
         TopicMaterialType topicMaterialType = TopicMaterialType
                 .fromMimeType(file.getContentType());
 
-        topicMaterialRepository.save(
+        TopicMaterial topicMaterial = topicMaterialRepository.save(
                 TopicMaterial.builder()
                 .type(topicMaterialType)
                 .title(file.getOriginalFilename())
@@ -76,23 +84,25 @@ public class TopicMaterialServiceImpl implements TopicMaterialService{
 
         storageService.uploadTopicMaterial(file, topicMaterialKey);
 
+        subject.touch();
         log.info("Uploaded topic material successfully [type={}, subjectId={}, " +
                 "teacherId={}]", topicMaterialType, subjectId, teacherId);
-        return storageService.generateTopicMaterialUrl(topicMaterialKey);
+        return topicMaterialMapper.toResponse(topicMaterial);
     }
 
     @Override
     @Transactional
+    @CacheEvict(value = "subjects", key = "#subjectId")
     public void deleteTopicMaterials(
             Long subjectId, Long unitId, Long topicId,
-            List<Long> topicMaterialIds, Long teacherId
+            TopicMaterialDeleteRequest request, Long teacherId
     ) {
         Subject subject = subjectHelper.findSubjectByIdAndTeacherId(subjectId, teacherId);
 
         subjectHelper.checkArchived(subject);
 
         List<TopicMaterial> topicMaterials = topicMaterialRepository
-                .findByIdsWithParentValidation(topicMaterialIds, topicId, unitId, subjectId);
+                .findByIdsWithParentValidation(request.topicMaterialIds(), topicId, unitId, subjectId);
 
         List<String> topicMaterialKeys = topicMaterials.stream()
                 .map(TopicMaterial::getTopicMaterialKey)
@@ -101,9 +111,10 @@ public class TopicMaterialServiceImpl implements TopicMaterialService{
         if(!topicMaterials.isEmpty()){
             storageService.deleteTopicMaterials(topicMaterialKeys);
             topicMaterialRepository.deleteAll(topicMaterials);
+            subject.touch();
         }
 
         log.info("Deleted multiple topic materials [providedIdCount={}, deletedIdCount={}]",
-                topicMaterialIds.size(), topicMaterialKeys.size());
+                request.topicMaterialIds().size(), topicMaterialKeys.size());
     }
 }

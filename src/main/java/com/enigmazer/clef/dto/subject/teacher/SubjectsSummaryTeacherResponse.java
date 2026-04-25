@@ -1,12 +1,13 @@
-package com.enigmazer.clef.dto.subject;
+package com.enigmazer.clef.dto.subject.teacher;
 
 import java.time.Instant;
 
-public record ListTeacherSubjectsResponse(
+public record SubjectsSummaryTeacherResponse(
         Long id,
         String name,
         String description,
         String joinCode,
         boolean locked,
-        Instant createdAt
+        Instant createdAt,
+        Instant updatedAt
 ) {}

@@ -11,5 +11,6 @@ public record HomeworkResponse(
         String description,
         Set<HomeworkTopicResponse> topics,
         Instant dueDate,
-        Instant createdAt
+        Instant createdAt,
+        Instant updatedAt
 ) {}

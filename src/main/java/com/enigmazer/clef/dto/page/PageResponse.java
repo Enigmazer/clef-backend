@@ -1,4 +1,4 @@
-package com.enigmazer.clef.service.page;
+package com.enigmazer.clef.dto.page;
 
 import org.springframework.data.domain.Page;
 

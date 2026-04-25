@@ -87,7 +87,6 @@ public class JwtFilter extends OncePerRequestFilter {
 
         }  catch (ExpiredJwtException | MalformedJwtException e) {
             log.warn("JWT validation failed [path={}, reason={}]", request.getServletPath(), e.getMessage());
-            // Delegate to @ControllerAdvice instead of writing directly to the response
             exceptionResolver.resolveException(request, response, null, e);
         } catch (Exception e) {
             log.error("Unexpected error during JWT validation [path={}]", request.getServletPath(), e);

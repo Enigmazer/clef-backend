@@ -7,6 +7,7 @@ import org.mapstruct.Mapper;
 
 @Mapper(componentModel = "spring", uses = {SimpleTopicMapper.class})
 public interface UnitMapper {
+
     UnitDetailResponse toDetailResponse(Unit unit);
 
     UnitUpdateResponse toUpdateResponse(Unit unit);

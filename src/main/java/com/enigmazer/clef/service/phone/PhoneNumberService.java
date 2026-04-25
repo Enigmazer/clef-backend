@@ -5,7 +5,6 @@ import com.enigmazer.clef.dto.phone.PhoneResponse;
 import java.util.List;
 
 public interface PhoneNumberService {
-
     void sendOtp(String rawPhone, Long userId);
 
     void verifyOtp(Long userId, String rawPhone, String code);

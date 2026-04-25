@@ -1,7 +1,7 @@
 package com.enigmazer.clef.mapper;
 
 import com.enigmazer.clef.dto.enrollment.EnrolledStudentResponse;
-import com.enigmazer.clef.dto.subject.ListStudentSubjectsResponse;
+import com.enigmazer.clef.dto.subject.student.SubjectsSummaryStudentResponse;
 import com.enigmazer.clef.entity.Enrollment;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
@@ -20,6 +20,7 @@ public interface EnrollmentMapper {
     @Mapping(source = "subject.description", target = "description")
     @Mapping(source = "subject.teacher.fullName", target = "teacherName")
     @Mapping(source = "subject.teacher.avatarUrl", target = "teacherAvatarUrl")
+    @Mapping(source = "subject.updatedAt", target = "updatedAt")
     @Mapping(source = "joinedAt", target = "joinedAt")
-    ListStudentSubjectsResponse toStudentSummary(Enrollment enrollment);
+    SubjectsSummaryStudentResponse toSubjectSummaryResponse(Enrollment enrollment);
 }

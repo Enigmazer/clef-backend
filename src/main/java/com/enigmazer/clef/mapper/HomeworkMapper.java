@@ -4,7 +4,7 @@ import com.enigmazer.clef.dto.homework.HomeworkResponse;
 import com.enigmazer.clef.entity.Homework;
 import org.mapstruct.Mapper;
 
-@Mapper(componentModel = "spring")
+@Mapper(componentModel = "spring", uses = TopicMapper.class)
 public interface HomeworkMapper {
 
     HomeworkResponse toResponse(Homework homework);

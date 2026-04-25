@@ -1,6 +1,7 @@
 package com.enigmazer.clef.service.unit;
 
 import com.enigmazer.clef.dto.topic.TopicCreationUpdateRequest;
+import com.enigmazer.clef.dto.unit.UnitCreationRequest;
 import com.enigmazer.clef.dto.unit.UnitUpdateRequest;
 import com.enigmazer.clef.dto.unit.UnitUpdateResponse;
 import com.enigmazer.clef.entity.Subject;
@@ -18,6 +19,7 @@ import com.enigmazer.clef.service.common.SubjectHelper;
 import com.enigmazer.clef.service.storage.StorageService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -43,6 +45,55 @@ public class UnitServiceImpl implements UnitService{
 
     @Override
     @Transactional
+    @CacheEvict(value = "subjects", key = "#subjectId")
+    public void bulkAddUnits(Long subjectId, List<UnitCreationRequest> request, Long teacherId) {
+        Subject subject = subjectHelper.findSubjectByIdAndTeacherId(subjectId, teacherId);
+
+        subjectHelper.checkArchived(subject);
+
+        int unitOrder = unitRepository.findMaxOrderIndex(subjectId)+1;
+
+        for (UnitCreationRequest unitCreationRequest: request){
+            Unit unit;
+            String trimmed = unitCreationRequest.title().trim();
+            if (unitRepository.existsByTitleAndSubjectId(trimmed, subjectId)) {
+                throw new ResourceAlreadyExistsException("Unit " + trimmed + " already exists in this subject");
+            }
+
+            unit = unitRepository.save(
+                    Unit.builder()
+                            .title(trimmed)
+                            .subject(subject)
+                            .orderIndex(unitOrder++)
+                            .build()
+            );
+
+            int topicOrder = 1;
+            for (TopicCreationUpdateRequest topicCreationUpdateRequest : unitCreationRequest.topics()){
+                String topicTrimmed = topicCreationUpdateRequest.title().trim();
+                if (topicRepository.existsByTitleAndUnitId(trimmed, unit.getId())) {
+                    throw new ResourceAlreadyExistsException(
+                            "Topic " + trimmed + " already exists in this unit"
+                    );
+                }
+
+                topicRepository.save(
+                        Topic.builder()
+                                .title(topicTrimmed)
+                                .unit(unit)
+                                .orderIndex(topicOrder++)
+                                .build()
+                );
+            }
+        }
+
+        subject.touch();
+        log.info("Bulk units created [subjectId={}, teacherId={}]", subjectId, teacherId);
+    }
+
+    @Override
+    @Transactional
+    @CacheEvict(value = "subjects", key = "#subjectId")
     public UnitUpdateResponse updateUnit(
             Long subjectId, Long unitId,
             UnitUpdateRequest request, Long teacherId
@@ -55,14 +106,12 @@ public class UnitServiceImpl implements UnitService{
                 () -> new ResourceNotFoundException("Unit not found")
         );
 
-        try {
-            if (request.title() != null && !request.title().isBlank()) {
-                unit.setTitle(request.title().trim());
+        if (request.title() != null && !request.title().isBlank()) {
+            String trimmed = request.title().trim();
+            if (unitRepository.existsByTitleAndSubjectId(trimmed, subjectId)) {
+                throw new ResourceAlreadyExistsException("Unit " + trimmed + " already exists in this subject");
             }
-            unitRepository.save(unit);
-        }catch (DataIntegrityViolationException ex){
-            throw new ResourceAlreadyExistsException(
-                    "Unit " + request.title() + " already exists in this subject");
+            unit.setTitle(trimmed);
         }
 
         int topicOrder = topicRepository.findMaxOrderIndex(unitId) + 1;
@@ -85,6 +134,7 @@ public class UnitServiceImpl implements UnitService{
                 () -> new SystemResourceNotFoundException("Unit not found", unitId)
         );
 
+        subject.touch();
         log.info("Successfully updated unit [subjectId={}, " +
                 "unitId={}, teacherId={}]", subjectId, unitId, teacherId);
         return unitMapper.toUpdateResponse(savedUnit);
@@ -92,8 +142,9 @@ public class UnitServiceImpl implements UnitService{
 
     @Override
     @Transactional
+    @CacheEvict(value = "subjects", key = "#subjectId")
     public void deleteUnit(Long subjectId, Long unitId,Long teacherId) {
-        Subject subject = subjectRepository.findWithCurrentAndNextTopicByIdAndTeacherId(subjectId, teacherId)
+        Subject subject = subjectRepository.findWithCurrentNextTopicsByIdAndTeacherId(subjectId, teacherId)
                 .orElseThrow(() -> new ResourceNotFoundException("Subject not found"));
 
         subjectHelper.checkArchived(subject);
@@ -110,7 +161,6 @@ public class UnitServiceImpl implements UnitService{
         if (currentAffected || nextAffected) {
             if (currentAffected) subject.setCurrentTopic(null);
             if (nextAffected) subject.setNextTopic(null);
-            subjectRepository.save(subject);
             log.warn("Deleted unit contained current or next topic, pointers cleared " +
                     "[subjectId={}, unitId={}]", subjectId, unitId);
         }
@@ -127,6 +177,7 @@ public class UnitServiceImpl implements UnitService{
 
         unitRepository.delete(unit);
 
+        subject.touch();
         log.info("Successfully deleted the unit [subjectId={}, " +
                 "unitId={}, teacherId={}]", subjectId, unitId, teacherId);
     }

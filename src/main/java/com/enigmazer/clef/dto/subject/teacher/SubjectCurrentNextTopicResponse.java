@@ -1,4 +1,4 @@
-package com.enigmazer.clef.dto.subject;
+package com.enigmazer.clef.dto.subject.teacher;
 
 import com.enigmazer.clef.dto.unit.UnitResponse;
 

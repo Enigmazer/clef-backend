@@ -1,4 +1,4 @@
-package com.enigmazer.clef.dto.subject;
+package com.enigmazer.clef.dto.subject.student;
 
 import jakarta.validation.constraints.NotBlank;
 

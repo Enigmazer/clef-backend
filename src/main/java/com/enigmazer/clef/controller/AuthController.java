@@ -14,13 +14,13 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Map;
-
+@Validated
 @RestController
-@RequestMapping("/auth")
 @RequiredArgsConstructor
+@RequestMapping("/auth")
 @Tag(name = "Authentication Management")
 public class AuthController {
 
@@ -52,18 +52,19 @@ public class AuthController {
 
     @PostMapping("/password")
     @Operation(summary = "Set or update password for user account")
-    public ResponseEntity<Map<String, String>> setOrUpdatePassword(
+    public ResponseEntity<Void> setOrUpdatePassword(
             @AuthenticationPrincipal CustomUserDetails principal,
-            @Valid @RequestBody SetUpdatePasswordReq request) {
-
+            @Valid @RequestBody SetUpdatePasswordReq request
+    ) {
         authService.setOrUpdatePassword(principal.getId(), request.newPassword());
-        return ResponseEntity.ok(Map.of("message", "Password set successfully."));
+        return ResponseEntity.ok().build();
     }
 
     @PostMapping("/refresh")
     @Operation(summary = "Generate new access and refresh tokens")
-    public ResponseEntity<Map<String, String>> refresh(
-            @CookieValue(name = "refreshToken", required = false) String refreshToken) {
+    public ResponseEntity<AccessTokenResponse> refresh(
+            @CookieValue(name = "refreshToken", required = false) String refreshToken
+    ) {
 
         if(refreshToken == null || refreshToken.isBlank()){
             throw new InvalidRequestException("No refresh token found.");
@@ -71,48 +72,47 @@ public class AuthController {
 
         TokenPair tokens = authService.refreshTokens(refreshToken);
         ResponseCookie newRefreshCookie = cookieService.generateRefreshTokenCookie(tokens.refreshToken());
+        AccessTokenResponse accessToken = new AccessTokenResponse(tokens.accessToken());
 
         return ResponseEntity.ok()
                 .header(HttpHeaders.SET_COOKIE, newRefreshCookie.toString())
-                .body(Map.of("message", "Tokens refreshed successfully",
-                             "accessToken", tokens.accessToken()));
+                .body(accessToken);
     }
 
     @PostMapping("/logout")
     @Operation(summary = "Logout from current session")
-    public ResponseEntity<Map<String, String>> logout(
-            @AuthenticationPrincipal CustomUserDetails principal,
-            @CookieValue(name = "refreshToken", required = false) String refreshToken) {
-
-        if(principal != null && refreshToken != null){
-            authService.logout(principal.getId(), refreshToken);
+    public ResponseEntity<Void> logout(
+            @CookieValue(name = "refreshToken", required = false) String refreshToken
+    ) {
+        if(refreshToken != null){
+            authService.logout(refreshToken);
         }
 
         ResponseCookie logoutCookie = cookieService.generateRefreshTokenClearCookie();
 
         return ResponseEntity.ok()
-                .header(HttpHeaders.SET_COOKIE, logoutCookie.toString())
-                .body(Map.of("message", "Logged out successfully"));
+                .header(HttpHeaders.SET_COOKIE, logoutCookie.toString()).build();
     }
 
     @PostMapping("/logout-all")
     @Operation(summary = "Logout from all sessions")
-    public ResponseEntity<Map<String, String>> logoutAll(
-            @AuthenticationPrincipal CustomUserDetails principal) {
+    public ResponseEntity<Void> logoutAll(
+            @AuthenticationPrincipal CustomUserDetails principal
+    ) {
         authService.logoutAllDevices(principal.getId());
 
         ResponseCookie logoutCookie = cookieService.generateRefreshTokenClearCookie();
 
         return ResponseEntity.ok()
-                .header(HttpHeaders.SET_COOKIE, logoutCookie.toString())
-                .body(Map.of("message", "Logged out from all devices successfully"));
+                .header(HttpHeaders.SET_COOKIE, logoutCookie.toString()).build();
     }
 
     // --- Two-Factor Authentication Operations ---
     @PostMapping("/2fa/send-otp")
     @Operation(summary = "Send two-factor authentication otp")
     public ResponseEntity<Void> sendOtp(
-            @AuthenticationPrincipal CustomUserDetails principal) {
+            @AuthenticationPrincipal CustomUserDetails principal
+    ) {
         authService.send2FAOtp(principal.getId());
         return ResponseEntity.ok().build();
     }
@@ -121,7 +121,8 @@ public class AuthController {
     @Operation(summary = "Enable two-factor authentication")
     public ResponseEntity<Void> enable2FA(
             @AuthenticationPrincipal CustomUserDetails principal,
-            @Valid @RequestBody TwoFAVerifyRequest request) {
+            @Valid @RequestBody TwoFAVerifyRequest request
+    ) {
         authService.enable2FA(principal.getId(), request.otpCode());
         return ResponseEntity.ok().build();
     }
@@ -130,7 +131,8 @@ public class AuthController {
     @Operation(summary = "Disable two-factor authentication")
     public ResponseEntity<Void> disable2FA(
             @AuthenticationPrincipal CustomUserDetails principal,
-            @Valid @RequestBody TwoFAVerifyRequest request) {
+            @Valid @RequestBody TwoFAVerifyRequest request
+    ) {
         authService.disable2FA(principal.getId(), request.otpCode());
         return ResponseEntity.ok().build();
     }
@@ -139,7 +141,8 @@ public class AuthController {
     @Operation(summary = "Verify OTP and complete 2FA login")
     public ResponseEntity<LoginResponse> verifyTwoFA(
             @CookieValue("tempToken") String tempToken,
-            @Valid @RequestBody TwoFAVerifyRequest request) {
+            @Valid @RequestBody TwoFAVerifyRequest request
+    ) {
 
         AuthResponse authData = authService.verifyTwoFA(tempToken, request.otpCode());
 

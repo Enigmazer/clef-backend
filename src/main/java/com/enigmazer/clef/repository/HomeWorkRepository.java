@@ -10,37 +10,44 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 
 @Repository
 public interface HomeWorkRepository extends JpaRepository<Homework, Long> {
-    @Query(
-            value = "SELECT h FROM Homework h " +
-                    "LEFT JOIN FETCH h.topics " +
-                    "WHERE h.subject = :subject " +
-                    "AND h.dueDate >= :now",
-            countQuery = "SELECT COUNT(h) FROM Homework h " +
-                    "WHERE h.subject = :subject " +
-                    "AND h.dueDate >= :now"
-    )
-    Page<Homework> findUpcomingHomeworkBySubject(
+
+    @Query("SELECT h.id FROM Homework h " +
+            "WHERE h.subject = :subject " +
+            "AND h.dueDate >= :now")
+    Page<Long> findUpcomingHomeworkIdsBySubject(
             @Param("subject") Subject subject,
             @Param("now") Instant now,
             Pageable pageable);
 
     @Query(
-            value = "SELECT h FROM Homework h " +
-                    "LEFT JOIN FETCH h.topics " +
-                    "WHERE h.subject = :subject " +
-                    "AND h.dueDate < :now",
-            countQuery = "SELECT COUNT(h) FROM Homework h " +
+            value = "SELECT h.id FROM Homework h " +
                     "WHERE h.subject = :subject " +
                     "AND h.dueDate < :now"
     )
-    Page<Homework> findPastHomeworkBySubject(
+    Page<Long> findPastHomeworkIdsBySubject(
             @Param("subject") Subject subject,
             @Param("now") Instant now,
             Pageable pageable);
+
+    @Query("SELECT h FROM Homework h " +
+            "LEFT JOIN FETCH h.topics " +
+            "WHERE h.id IN :ids " +
+            "ORDER BY h.dueDate ASC")
+    List<Homework> findFutureHomeworksWithTopicsByIds(
+            @Param("ids") List<Long> ids);
+
+
+    @Query("SELECT h FROM Homework h " +
+            "LEFT JOIN FETCH h.topics " +
+            "WHERE h.id IN :ids " +
+            "ORDER BY h.dueDate DESC")
+    List<Homework> findPastHomeworksWithTopicsByIds(
+            @Param("ids") List<Long> ids);
 
     @Query("SELECT h FROM Homework h " +
             "WHERE h.id = :homeWorkId " +

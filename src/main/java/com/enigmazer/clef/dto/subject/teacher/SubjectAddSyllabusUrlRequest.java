@@ -1,4 +1,4 @@
-package com.enigmazer.clef.dto.subject;
+package com.enigmazer.clef.dto.subject.teacher;
 
 import org.hibernate.validator.constraints.URL;
 

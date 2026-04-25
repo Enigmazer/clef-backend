@@ -2,6 +2,7 @@ package com.enigmazer.clef.mapper;
 
 import com.enigmazer.clef.dto.phone.PhoneNumberStudentResponse;
 import com.enigmazer.clef.dto.user.TeacherProfileResponse;
+import com.enigmazer.clef.dto.user.UserPreferenceUpdateResponse;
 import com.enigmazer.clef.dto.user.UserResponse;
 import com.enigmazer.clef.entity.User;
 import org.mapstruct.Mapper;
@@ -27,4 +28,6 @@ public interface UserMapper {
 
     @Mapping(target = "phoneNumbers", expression = "java(mapPhoneNumbers(user))")
     TeacherProfileResponse toTeacherProfileResponse(User user);
+
+    UserPreferenceUpdateResponse toPreferenceUpdateResponse(User user);
 }

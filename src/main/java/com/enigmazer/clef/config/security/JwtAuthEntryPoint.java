@@ -23,7 +23,6 @@ public class JwtAuthEntryPoint implements AuthenticationEntryPoint {
     public void commence(HttpServletRequest request, HttpServletResponse response, AuthenticationException authException) {
         log.warn("Unauthorized API access attempt ['{}': {}]", request.getRequestURI(), authException.getMessage());
 
-        //Teleport the exception to your @ControllerAdvice
         resolver.resolveException(request, response, null, authException);
     }
 }

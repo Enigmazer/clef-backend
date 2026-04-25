@@ -1,13 +1,13 @@
-package com.enigmazer.clef.dto.subject;
+package com.enigmazer.clef.dto.subject.student;
 
+import com.enigmazer.clef.dto.subject.teacher.SubjectCurrentNextTopicResponse;
 import com.enigmazer.clef.dto.unit.UnitDetailResponse;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.time.Instant;
 import java.util.List;
 
-@Schema(description = "The comprehensive data returned when fetching a subject.")
-public record SubjectDetailsTeacherResponse(
+public record SubjectDetailsStudentResponse(
 
         Long id,
 
@@ -15,9 +15,6 @@ public record SubjectDetailsTeacherResponse(
 
         @Schema(description = "The description of the subject.")
         String description,
-
-        @Schema(description = "The unique 6-character code students use to enroll.")
-        String joinCode,
 
         @Schema(description = "All the units and there topics of this subject.")
         List<UnitDetailResponse> units,
@@ -30,10 +27,5 @@ public record SubjectDetailsTeacherResponse(
 
         boolean isSyllabusPdfAvailable,
 
-        @Schema(description = "Indicates if new enrollments are locked by the teacher.")
-        boolean locked,
-
-        boolean archived,
-
-        Instant createdAt
+        Instant updatedAt
 ) {}

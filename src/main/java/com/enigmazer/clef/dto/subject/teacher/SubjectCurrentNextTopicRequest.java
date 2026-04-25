@@ -1,6 +1,6 @@
-package com.enigmazer.clef.dto.subject;
+package com.enigmazer.clef.dto.subject.teacher;
 
 public record SubjectCurrentNextTopicRequest(
-        Long id,
+        Long topicId,
         Long unitId
 ){}

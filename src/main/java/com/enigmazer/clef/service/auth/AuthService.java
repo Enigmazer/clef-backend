@@ -11,7 +11,7 @@ public interface AuthService {
 
     TokenPair refreshTokens(String refreshToken);
 
-    void logout(Long userId, String refreshToken);
+    void logout(String refreshToken);
 
     void logoutAllDevices(Long userId);
 

@@ -29,6 +29,7 @@ public class PhoneNumberServiceImpl implements PhoneNumberService{
 
     private final PhoneNumberRepository phoneNumberRepository;
     private final UserRepository userRepository;
+
     private final PhoneNumberMapper phoneNumberMapper;
 
     // real otp verification is disabled because of free tire limitations
@@ -46,12 +47,12 @@ public class PhoneNumberServiceImpl implements PhoneNumberService{
         }
 
         if (phoneNumberRepository.existsByPhoneNumber(normalized)) {
-            log.warn("User attempted to register already taken phone number [userId{}]", userId);
+            log.warn("User attempted to register already taken phone number [userId={}]", userId);
             throw new BusinessException("Phone number is unavailable.");
         }
 
 //        Verification.creator(serviceSid, normalized, "sms").create();
-        log.debug("otp sent [userId={}]", userId);
+        log.info("otp sent [userId={}]", userId);
     }
 
     @Override
@@ -97,7 +98,6 @@ public class PhoneNumberServiceImpl implements PhoneNumberService{
 
         phoneNumberRepository.clearPrimaryByUserId(userId);
         target.setPrimary(true);
-        phoneNumberRepository.save(target);
         log.info("User changed primary phone number [userId={}]", userId);
     }
 
@@ -118,7 +118,6 @@ public class PhoneNumberServiceImpl implements PhoneNumberService{
             phoneNumberRepository.findByUserIdAndIsPrimaryFalse(userId)
                     .ifPresent(remaining -> {
                         remaining.setPrimary(true);
-                        phoneNumberRepository.save(remaining);
                         log.info("Auto-promoted user's remaining number to primary [userId={}]", userId);
                     });
         }

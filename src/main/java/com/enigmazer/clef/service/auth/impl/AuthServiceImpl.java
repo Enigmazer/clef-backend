@@ -27,6 +27,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Optional;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -53,9 +55,11 @@ public class AuthServiceImpl implements AuthService{
             );
         }catch (DisabledException ex){
             log.warn("Disabled user account login attempt " +
-                    "[email={}]", email);
+                    "[maskedEmail={}]", maskEmail(email));
             throw new InvalidRequestException("Account is disabled");
         }catch (AuthenticationException ex){
+            log.warn("Invalid credentials login attempt " +
+                    "[maskedEmail={}]", maskEmail(email));
             throw new InvalidRequestException("Invalid email or password");
         }
 
@@ -95,13 +99,14 @@ public class AuthServiceImpl implements AuthService{
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found."));
 
+        // Todo: make a proper update password method
         if(passwordEncoder.matches(newPassword, user.getPassword())){
             throw new BusinessException("New password must be different from your current password.");
         }
 
         user.setPassword(passwordEncoder.encode(newPassword));
         userRepository.save(user);
-        log.info("Password successfully set [userId={}]", userId);
+        log.info("Successfully set/updated password [userId={}]", userId);
     }
 
     @Override
@@ -126,16 +131,23 @@ public class AuthServiceImpl implements AuthService{
 
     @Override
     @Transactional
-    public void logout(Long userId, String refreshToken) {
+    public void logout(String refreshToken) {
+        Optional<RefreshToken> token = refreshTokenService.findByToken(refreshToken);
+
+        if (token.isEmpty()){
+            log.debug("User attempted to log out using invalid or expired refresh token");
+            return;
+        }
+
         refreshTokenService.deleteByToken(refreshToken);
-        log.info("User logged out from current device [userId={}]", userId);
+        log.info("User logged out from current session [userId={}]", token.get().getUser().getId());
     }
 
     @Override
     @Transactional
     public void logoutAllDevices(Long userId){
         refreshTokenService.deleteByUserId(userId);
-        log.info("User logged out from all devices [userId={}]", userId);
+        log.info("User logged out from all sessions [userId={}]", userId);
     }
 
     @Override
@@ -178,14 +190,21 @@ public class AuthServiceImpl implements AuthService{
         String accessToken = jwtService.generateAccessToken(user);
         String refreshToken = refreshTokenService.generateRefreshToken(user);
 
-        log.info("User successfully signed in via 2FA [userId={}]", user.getId());
+        log.info("User successfully logged in via 2FA [userId={}]", user.getId());
         return new AuthResponse(user.getId(), user.getRole().getName().name(), accessToken, refreshToken);
     }
 
+    // --- Helper Methods ---
     private User verify2FAOtpAndGetUser(String code, Long userId){
         phoneNumberService.verify2FAOtp(userId, code);
 
         return userRepository.findById(userId)
                 .orElseThrow(() -> new SystemResourceNotFoundException("User not found", userId));
+    }
+
+    private String maskEmail(String email) {
+        int atIndex = email.indexOf('@');
+        if (atIndex <= 1) return "***" + email.substring(atIndex);
+        return email.charAt(0) + "***" + email.substring(atIndex);
     }
 }

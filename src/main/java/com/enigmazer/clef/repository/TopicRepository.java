@@ -5,7 +5,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
@@ -31,7 +30,7 @@ public interface TopicRepository extends JpaRepository<Topic, Long> {
             "WHERE t.id IN (:ids) AND " +
             "t.unit.id = :unitId AND t.unit.subject.id = :subjectId")
     List<Topic> findWithTopicMaterialsByIdsAndParentValidation(
-            @Param("ids") List<Long> ids,
+            @Param("ids") Set<Long> ids,
             @Param("unitId") Long unitId,
             @Param("subjectId") Long subjectId
     );
@@ -70,4 +69,6 @@ public interface TopicRepository extends JpaRepository<Topic, Long> {
             @Param("subjectId") Long subjectId,
             @Param("currentTopicId") Long currentTopicId
     );
+
+    boolean existsByTitleAndUnitId(String trimmed, Long unitId);
 }

@@ -12,9 +12,7 @@ import java.time.Instant;
 import java.util.Optional;
 
 @Repository
-public interface RefreshTokenRepository extends JpaRepository<RefreshToken,Long> {
-
-    Optional<RefreshToken> findByToken(String token);
+public interface RefreshTokenRepository extends JpaRepository<RefreshToken, Long> {
 
     @Transactional
     @Modifying
@@ -25,6 +23,8 @@ public interface RefreshTokenRepository extends JpaRepository<RefreshToken,Long>
     @Modifying
     @Query("DELETE FROM RefreshToken r WHERE r.expiryDate <= :now")
     int deleteAllExpiredSince(@Param("now") Instant now);
+
+    Optional<RefreshToken> findByToken(String token);
 
     void deleteByToken(String refreshToken);
 }

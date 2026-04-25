@@ -13,6 +13,9 @@ spring:
   application:
     name: clef
 
+  main:
+    lazy-initialization: true
+
   datasource:
     driver-class-name: org.postgresql.Driver
 

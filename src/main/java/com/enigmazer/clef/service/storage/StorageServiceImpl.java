@@ -2,7 +2,6 @@ package com.enigmazer.clef.service.storage;
 
 import com.enigmazer.clef.exception.BusinessException;
 import com.enigmazer.clef.exception.InvalidRequestException;
-import com.enigmazer.clef.exception.ResourceNotFoundException;
 import com.enigmazer.clef.exception.StorageException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -138,7 +137,7 @@ public class StorageServiceImpl implements StorageService{
                     .retrieve()
                     .body(byte[].class);
         } catch (RestClientException e) {
-            log.error("Failed to fetch file from storage [key={}, reason={}]", key, e.getMessage());
+            log.error("Failed to fetch file from storage [key={}]", key, e);
             throw new BusinessException("Unable to process your file at this time. Please try again later.");
         }
     }
@@ -162,10 +161,10 @@ public class StorageServiceImpl implements StorageService{
             byte[] bytes = file.getBytes();
             s3Client.putObject(putObjectRequest, RequestBody.fromBytes(bytes));
         } catch (IOException e) {
-            log.error("Failed to read file bytes", e);
+            log.error("Failed to read file bytes [key={}]", key, e);
             throw new StorageException("Failed to process file", e);
         } catch (SdkException e) {
-            log.error("Failed to upload file to storage", e);
+            log.error("Failed to upload file to storage [key={}]", key, e);
             throw new StorageException("Failed to upload file", e);
         }
     }
@@ -202,7 +201,7 @@ public class StorageServiceImpl implements StorageService{
             s3Client.deleteObject(deleteObjectRequest);
         } catch (SdkException e) {
             log.error("Failed to delete file [key={}]", key, e);
-            throw new StorageException("Failed to delete file ", e);
+            throw new StorageException("Failed to delete file", e);
         }
     }
 
@@ -229,7 +228,7 @@ public class StorageServiceImpl implements StorageService{
             s3Client.deleteObjects(deleteObjectsRequest);
         } catch (SdkException e) {
             log.error("Failed to delete files in batch [keysCount={}]", keys.size(), e);
-            throw new StorageException("Failed to delete files in batch ", e);
+            throw new StorageException("Failed to delete files in batch", e);
         }
     }
 

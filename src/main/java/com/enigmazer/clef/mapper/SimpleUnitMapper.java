@@ -6,6 +6,7 @@ import org.mapstruct.Mapper;
 
 @Mapper(componentModel = "spring")
 public interface SimpleUnitMapper {
+
     // Maps a Unit without its Topics
     UnitResponse toResponse(Unit unit);
 }

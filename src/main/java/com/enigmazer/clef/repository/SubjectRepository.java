@@ -6,7 +6,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
@@ -14,18 +13,14 @@ import java.util.Optional;
 @Repository
 public interface SubjectRepository extends JpaRepository<Subject, Long> {
 
-    boolean existsByJoinCode(String code);
-
-    Optional<Subject> findByIdAndTeacherId(Long subjectId, Long teacherId);
-
     @Query("SELECT s FROM Subject s " +
             "LEFT JOIN FETCH s.currentTopic ct " +
             "LEFT JOIN FETCH ct.unit " +
             "LEFT JOIN FETCH s.nextTopic nt " +
             "LEFT JOIN FETCH nt.unit " +
-            "WHERE s.id = :subjectId AND s.teacher.id = :teacherId")
-    Optional<Subject> findWithCurrentAndNextTopicByIdAndTeacherId(
-            @Param("subjectId") Long subjectId,
+            "WHERE s.id = :id AND s.teacher.id = :teacherId")
+    Optional<Subject> findWithCurrentNextTopicsByIdAndTeacherId(
+            @Param("id") Long subjectId,
             @Param("teacherId") Long teacherId
     );
 
@@ -33,22 +28,8 @@ public interface SubjectRepository extends JpaRepository<Subject, Long> {
             "LEFT JOIN FETCH s.units u " +
             "LEFT JOIN FETCH u.topics t " +
             "LEFT JOIN FETCH t.topicMaterials tm " +
-            "WHERE s.id = :subjectId AND s.teacher.id = :teacherId"
+            "WHERE s.id = :id AND s.teacher.id = :teacherId"
     )
-    Optional<Subject> findWithTopicMaterialsByIdAndTeacherId(
-            @Param("subjectId") Long subjectId,
-            @Param("teacherId") Long teacherId
-    );
-
-    List<Subject> findAllByTeacherIdAndIsArchivedFalse(Long teacherId);
-
-    List<Subject> findAllByTeacherIdAndIsArchivedTrue(Long teacherId);
-
-    @Query("SELECT s FROM Subject s " +
-            "LEFT JOIN FETCH s.units u " +
-            "LEFT JOIN FETCH u.topics t " +
-            "LEFT JOIN FETCH t.topicMaterials " +
-            "WHERE s.id = :id AND s.teacher.id = :teacherId")
     Optional<Subject> findSubjectDetailByIdAndTeacherId(
             @Param("id") Long subjectId,
             @Param("teacherId") Long teacherId
@@ -99,7 +80,17 @@ public interface SubjectRepository extends JpaRepository<Subject, Long> {
             @Param("userId") Long userId
     );
 
+    Optional<Subject> findByJoinCode(String joinCode);
+
+    Optional<Subject> findByIdAndTeacherId(Long subjectId, Long teacherId);
+
+    List<Subject> findAllByTeacherIdAndIsArchivedFalse(Long teacherId);
+
+    List<Subject> findAllByTeacherIdAndIsArchivedTrue(Long teacherId);
+
+    boolean existsByJoinCode(String code);
+
     boolean existsByIdAndTeacherId(Long subjectId, Long teacherId);
 
-    Optional<Subject> findByJoinCode(String joinCode);
+    boolean existsByNameAndTeacherId(String trimmed, Long teacherId);
 }
