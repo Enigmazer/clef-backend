@@ -7,6 +7,7 @@ import com.enigmazer.clef.dto.topic.TopicUpdateResponse;
 import com.enigmazer.clef.entity.Subject;
 import com.enigmazer.clef.entity.Topic;
 import com.enigmazer.clef.entity.TopicMaterial;
+import com.enigmazer.clef.exception.InvalidRequestException;
 import com.enigmazer.clef.exception.ResourceAlreadyExistsException;
 import com.enigmazer.clef.exception.ResourceNotFoundException;
 import com.enigmazer.clef.mapper.SimpleTopicMapper;
@@ -56,13 +57,13 @@ public class TopicServiceImpl implements TopicService{
 
         List<TopicUpdateResponse> updatedTopics = new ArrayList<>();
 
-        for(TopicUpdateRequest updatedTopic : request) {
+        for(TopicUpdateRequest topicUpdateRequest : request) {
             Topic topic = topicRepository
-                    .findByIdAndParentValidation(updatedTopic.topicId(), unitId, subjectId)
-                    .orElseThrow(() -> new ResourceNotFoundException("Topic not found"));
+                    .findByIdAndParentValidation(topicUpdateRequest.topicId(), unitId, subjectId)
+                    .orElseThrow(() -> new InvalidRequestException("Topic not found: " + topicUpdateRequest.topicId()));
 
-            if (updatedTopic.title() != null && !updatedTopic.title().isBlank()) {
-                String trimmed = updatedTopic.title().trim();
+            if (topicUpdateRequest.title() != null && !topicUpdateRequest.title().isBlank()) {
+                String trimmed = topicUpdateRequest.title().trim();
                 if (topicRepository.existsByTitleAndUnitId(trimmed, unitId)) {
                     throw new ResourceAlreadyExistsException(
                             "Topic " + trimmed + " already exists in this unit"
@@ -92,7 +93,7 @@ public class TopicServiceImpl implements TopicService{
         subjectHelper.checkArchived(subject);
 
         Topic topic = topicRepository.findByIdAndParentValidation(topicId, unitId, subjectId)
-                .orElseThrow(() -> new ResourceNotFoundException("Topic not found"));
+                .orElseThrow(() -> new InvalidRequestException("Topic not found"));
 
         if(topic.getCompletedAt() == null) {
             topic.setCompletedAt(Instant.now());
@@ -126,7 +127,7 @@ public class TopicServiceImpl implements TopicService{
                 .findWithTopicMaterialsByIdsAndParentValidation(request.topicIds(), unitId, subjectId);
 
         if(topics.isEmpty() || topics.size() != request.topicIds().size()){
-            throw new ResourceNotFoundException("Topic(s) not found");
+            throw new InvalidRequestException("Topic(s) not found");
         }
 
         boolean currentAffected = false;

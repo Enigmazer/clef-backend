@@ -8,6 +8,7 @@ import com.enigmazer.clef.entity.Homework;
 import com.enigmazer.clef.entity.Subject;
 import com.enigmazer.clef.entity.Topic;
 import com.enigmazer.clef.exception.BusinessException;
+import com.enigmazer.clef.exception.InvalidRequestException;
 import com.enigmazer.clef.exception.ResourceNotFoundException;
 import com.enigmazer.clef.mapper.HomeworkMapper;
 import com.enigmazer.clef.repository.HomeWorkRepository;
@@ -50,7 +51,7 @@ public class HomeWorkServiceImpl implements HomeWorkService{
         if(request.topicIds() != null){
             topics = topicRepository.findByIdsAndSubjectId(request.topicIds(), subjectId);
             if(topics.size() != request.topicIds().size()){
-                throw new ResourceNotFoundException("Topic(s) not found");
+                throw new InvalidRequestException("Topic(s) not found");
             }
         }
 
@@ -80,8 +81,8 @@ public class HomeWorkServiceImpl implements HomeWorkService{
         boolean isUpcoming = filter.equals("upcoming");
 
         Sort sort = isUpcoming ?
-                Sort.by(Sort.Direction.ASC, "dueDate") :
-                Sort.by(Sort.Direction.DESC, "dueDate");
+                Sort.by(Sort.Direction.ASC, "dueDate")
+                : Sort.by(Sort.Direction.DESC, "dueDate");
         Pageable pageable = PageRequest.of(page, 10, sort);
 
         Instant now = Instant.now();
@@ -116,7 +117,7 @@ public class HomeWorkServiceImpl implements HomeWorkService{
         subjectHelper.checkArchived(subject);
 
         Homework homework = homeWorkRepository.findByIdAndSubjectId(homeWorkId, subjectId)
-                .orElseThrow(() -> new ResourceNotFoundException("Homework not found"));
+                .orElseThrow(() -> new InvalidRequestException("Homework not found"));
 
         if (homework.getDueDate().isBefore(Instant.now())) {
             throw new BusinessException("Cannot update homework that is already due");
@@ -129,7 +130,7 @@ public class HomeWorkServiceImpl implements HomeWorkService{
         if (request.topicIds() != null) {
             Set<Topic> topics = topicRepository.findByIdsAndSubjectId(request.topicIds(), subjectId);
             if (topics.size() != request.topicIds().size()) {
-                throw new ResourceNotFoundException("Topic(s) not found");
+                throw new InvalidRequestException("Topic(s) not found");
             }
             homework.setTopics(topics);
         }
@@ -148,7 +149,7 @@ public class HomeWorkServiceImpl implements HomeWorkService{
         subjectHelper.checkArchived(subject);
 
         Homework homework = homeWorkRepository.findByIdAndSubjectId(homeWorkId, subjectId).orElseThrow(
-                () -> new ResourceNotFoundException("Homework not found")
+                () -> new InvalidRequestException("Homework not found")
         );
 
         homeWorkRepository.delete(homework);

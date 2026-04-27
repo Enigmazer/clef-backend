@@ -171,14 +171,14 @@ public class SubjectServiceImpl implements SubjectService {
 
         Topic topic = topicRepository.findByIdAndParentValidation(
                         request.topicId(), request.unitId(), subjectId)
-                .orElseThrow(() -> new ResourceNotFoundException("Topic not found"));
+                .orElseThrow(() -> new InvalidRequestException("Topic not found"));
 
         if (topic.getCompletedAt() != null) {
-            throw new InvalidRequestException("A completed topic cannot be set as current topic");
+            throw new BusinessException("A completed topic cannot be set as current topic");
         }
 
         if (subject.getNextTopic() != null && subject.getNextTopic().getId().equals(request.topicId())) {
-            throw new InvalidRequestException("Current and next topic cannot be the same");
+            throw new BusinessException("Current and next topic cannot be the same");
         }
 
         subject.setCurrentTopic(topic);
@@ -202,14 +202,14 @@ public class SubjectServiceImpl implements SubjectService {
 
         Topic topic = topicRepository.findByIdAndParentValidation(
                         request.topicId(), request.unitId(), subjectId)
-                .orElseThrow(() -> new ResourceNotFoundException("Topic not found"));
+                .orElseThrow(() -> new InvalidRequestException("Topic not found"));
 
         if (topic.getCompletedAt() != null) {
-            throw new InvalidRequestException("A completed topic cannot be set as next topic");
+            throw new BusinessException("A completed topic cannot be set as next topic");
         }
 
         if (subject.getCurrentTopic() != null && subject.getCurrentTopic().getId().equals(request.topicId())) {
-            throw new InvalidRequestException("Next and current topic cannot be the same");
+            throw new BusinessException("Next and current topic cannot be the same");
         }
 
         subject.setNextTopic(topic);
@@ -285,17 +285,17 @@ public class SubjectServiceImpl implements SubjectService {
         );
 
         if (subject.getTeacher().getId().equals(studentId)){
-            throw new InvalidRequestException("You cannot join a subject you own");
+            throw new BusinessException("You cannot join a subject you own");
         }
 
         if (subject.isLocked() || subject.isArchived()) {
-            throw new InvalidRequestException("This subject is not accepting new enrollments");
+            throw new BusinessException("This subject is not accepting new enrollments");
         }
 
         User student = userRepository.getReferenceById(studentId);
 
         if (enrollmentRepository.existsByStudentIdAndSubjectId(studentId, subject.getId())) {
-            throw new ResourceAlreadyExistsException("You are already enrolled in this subject");
+            throw new BusinessException("You are already enrolled in this subject");
         }
 
         Enrollment saved = enrollmentRepository.save(Enrollment.builder()

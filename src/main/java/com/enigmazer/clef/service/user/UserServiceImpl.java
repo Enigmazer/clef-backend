@@ -29,7 +29,6 @@ public class UserServiceImpl implements UserService{
 
     @Override
     public UserResponse getCurrentUser(Long userId) {
-
         User user = userRepository.findById(userId).orElseThrow(
                 () -> new SystemResourceNotFoundException("User not found", userId)
         );

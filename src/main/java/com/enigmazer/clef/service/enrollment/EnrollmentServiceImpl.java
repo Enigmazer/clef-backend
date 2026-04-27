@@ -2,6 +2,7 @@ package com.enigmazer.clef.service.enrollment;
 
 import com.enigmazer.clef.dto.enrollment.EnrolledStudentResponse;
 import com.enigmazer.clef.entity.Subject;
+import com.enigmazer.clef.exception.InvalidRequestException;
 import com.enigmazer.clef.exception.ResourceNotFoundException;
 import com.enigmazer.clef.mapper.EnrollmentMapper;
 import com.enigmazer.clef.repository.EnrollmentRepository;
@@ -52,7 +53,7 @@ public class EnrollmentServiceImpl implements EnrollmentService{
         subjectHelper.checkArchived(subject);
 
         if (!enrollmentRepository.existsByStudentIdAndSubjectId(studentId, subjectId)) {
-            throw new ResourceNotFoundException("Enrollment not found");
+            throw new InvalidRequestException("Enrollment not found");
         }
 
         enrollmentRepository.deleteByStudentIdAndSubjectId(studentId, subjectId);
@@ -63,7 +64,7 @@ public class EnrollmentServiceImpl implements EnrollmentService{
     @Override
     public void unEnrollment(Long subjectId, Long studentId) {
         if (!enrollmentRepository.existsByStudentIdAndSubjectId(studentId, subjectId)) {
-            throw new ResourceNotFoundException("Enrollment not found");
+            throw new InvalidRequestException("Enrollment not found");
         }
 
         enrollmentRepository.deleteByStudentIdAndSubjectId(studentId, subjectId);

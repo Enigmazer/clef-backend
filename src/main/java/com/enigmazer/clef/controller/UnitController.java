@@ -2,6 +2,7 @@ package com.enigmazer.clef.controller;
 
 import com.enigmazer.clef.config.security.CustomUserDetails;
 import com.enigmazer.clef.dto.unit.UnitCreationRequest;
+import com.enigmazer.clef.dto.unit.UnitReorderRequest;
 import com.enigmazer.clef.dto.unit.UnitUpdateRequest;
 import com.enigmazer.clef.dto.unit.UnitUpdateResponse;
 import com.enigmazer.clef.service.unit.UnitService;
@@ -42,20 +43,30 @@ public class UnitController {
 
     // --- Patch Operations ---
     @PatchMapping("/{unitId}")
-    @Operation(summary = "Update the title of the unit and add new topics in it.")
+    @Operation(summary = "Update the title of the unit and add new topics in it")
     public ResponseEntity<UnitUpdateResponse> updateUnit(
             @AuthenticationPrincipal CustomUserDetails principal,
             @PathVariable Long subjectId,
             @PathVariable Long unitId,
             @Valid @RequestBody UnitUpdateRequest request
     ){
-        return ResponseEntity.ok()
-                .body(unitService.updateUnit(subjectId, unitId, request, principal.getId()));
+        return ResponseEntity.ok(unitService.updateUnit(subjectId, unitId, request, principal.getId()));
+    }
+
+    @PatchMapping("/reorder")
+    @Operation(summary = "Reorder units and topics")
+    public ResponseEntity<Void> reorder(
+            @AuthenticationPrincipal CustomUserDetails principal,
+            @PathVariable Long subjectId,
+            @Valid @RequestBody List<UnitReorderRequest> request
+    ){
+        unitService.reorder(subjectId, request, principal.getId());
+        return ResponseEntity.ok().build();
     }
 
     // --- Delete Operations ---
     @DeleteMapping("/{unitId}")
-    @Operation(summary = "Delete a unit.")
+    @Operation(summary = "Delete a unit")
     public ResponseEntity<Void> deleteUnit(
             @AuthenticationPrincipal CustomUserDetails principal,
             @PathVariable Long subjectId,

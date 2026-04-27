@@ -52,9 +52,7 @@ public class SyllabusServiceImpl implements SyllabusService{
                 .orElseThrow(() -> new ResourceNotFoundException("Subject not found"));
 
         String syllabusKey = subject.getSyllabusKey();
-        if(syllabusKey == null){
-            throw new ResourceNotFoundException("No syllabus found for the subject");
-        }
+        if(syllabusKey == null)  throw new InvalidRequestException("No syllabus found for the subject");
 
         String url = storageService.generateSyllabusUrl(syllabusKey);
 
@@ -93,7 +91,7 @@ public class SyllabusServiceImpl implements SyllabusService{
         subjectHelper.checkArchived(subject);
 
         if (subject.getSyllabusKey() == null) {
-            throw new BusinessException("Subject has no syllabus to delete");
+            throw new InvalidRequestException("Subject has no syllabus to delete");
         }
 
         storageService.deleteSyllabus(subject.getSyllabusKey());
@@ -110,7 +108,7 @@ public class SyllabusServiceImpl implements SyllabusService{
         subjectHelper.checkArchived(subject);
 
         String syllabusKey = subject.getSyllabusKey();
-        if (syllabusKey == null) throw new ResourceNotFoundException("No syllabus found to parse");
+        if (syllabusKey == null) throw new InvalidRequestException("No syllabus found to parse");
 
         byte[] bytes = storageService.getBytes(syllabusKey);
 

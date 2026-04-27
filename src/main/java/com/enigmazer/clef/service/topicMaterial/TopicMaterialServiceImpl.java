@@ -7,6 +7,7 @@ import com.enigmazer.clef.entity.Subject;
 import com.enigmazer.clef.entity.Topic;
 import com.enigmazer.clef.entity.TopicMaterial;
 import com.enigmazer.clef.enums.TopicMaterialType;
+import com.enigmazer.clef.exception.InvalidRequestException;
 import com.enigmazer.clef.exception.ResourceNotFoundException;
 import com.enigmazer.clef.mapper.TopicMaterialMapper;
 import com.enigmazer.clef.repository.TopicMaterialRepository;
@@ -43,9 +44,8 @@ public class TopicMaterialServiceImpl implements TopicMaterialService{
             Long topicMaterialId, Long userId
     ) {
         String topicMaterialKey = topicMaterialRepository
-                .findByIdIfAccessible(
-                        topicMaterialId, topicId, unitId, subjectId, userId
-                ).orElseThrow(() -> new ResourceNotFoundException("Topic material not found"))
+                .findByIdIfAccessible(topicMaterialId, topicId, unitId, subjectId, userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Topic material not found"))
                 .getTopicMaterialKey();
 
         String url = storageService.generateTopicMaterialUrl(topicMaterialKey);
@@ -66,7 +66,7 @@ public class TopicMaterialServiceImpl implements TopicMaterialService{
         subjectHelper.checkArchived(subject);
 
         Topic topic = topicRepository.findByIdAndParentValidation(topicId, unitId, subjectId)
-                .orElseThrow(() -> new ResourceNotFoundException("Topic Not Found"));
+                .orElseThrow(() -> new InvalidRequestException("Topic Not Found"));
 
         String topicMaterialKey = storageService.generateTopicMaterialKey(file);
 

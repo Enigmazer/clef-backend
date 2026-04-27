@@ -23,6 +23,15 @@ public interface UnitRepository extends JpaRepository<Unit, Long> {
             @Param("unitId") Long unitId,
             @Param("subjectId") Long subjectId);
 
+    @Query("Select u FROM Unit u " +
+            "LEFT JOIN FETCH u.topics " +
+            "WHERE u.subject.id = :subjectId " +
+            "AND u.id IN :unitIds")
+    List<Unit> findWithTopicsByIdsAndSubjectId(
+            @Param("unitIds") List<Long> unitIds,
+            @Param("subjectId") Long subjectId
+    );
+
     @Query("SELECT u FROM Unit u " +
             "LEFT JOIN FETCH u.topics " +
             "WHERE u.subject.id = :subjectId")
@@ -32,4 +41,5 @@ public interface UnitRepository extends JpaRepository<Unit, Long> {
     Optional<Unit> findByIdAndSubjectId(Long unitId, Long subjectId);
 
     boolean existsByTitleAndSubjectId(String trimmed, Long subjectId);
+
 }

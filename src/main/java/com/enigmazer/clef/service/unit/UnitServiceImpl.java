@@ -1,13 +1,16 @@
 package com.enigmazer.clef.service.unit;
 
 import com.enigmazer.clef.dto.topic.TopicCreationUpdateRequest;
+import com.enigmazer.clef.dto.topic.TopicReorderRequest;
 import com.enigmazer.clef.dto.unit.UnitCreationRequest;
+import com.enigmazer.clef.dto.unit.UnitReorderRequest;
 import com.enigmazer.clef.dto.unit.UnitUpdateRequest;
 import com.enigmazer.clef.dto.unit.UnitUpdateResponse;
 import com.enigmazer.clef.entity.Subject;
 import com.enigmazer.clef.entity.Topic;
 import com.enigmazer.clef.entity.TopicMaterial;
 import com.enigmazer.clef.entity.Unit;
+import com.enigmazer.clef.exception.InvalidRequestException;
 import com.enigmazer.clef.exception.ResourceAlreadyExistsException;
 import com.enigmazer.clef.exception.ResourceNotFoundException;
 import com.enigmazer.clef.exception.SystemResourceNotFoundException;
@@ -24,8 +27,8 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -103,7 +106,7 @@ public class UnitServiceImpl implements UnitService{
         subjectHelper.checkArchived(subject);
 
         Unit unit = unitRepository.findByIdAndSubjectId(unitId, subjectId).orElseThrow(
-                () -> new ResourceNotFoundException("Unit not found")
+                () -> new InvalidRequestException("Unit not found")
         );
 
         if (request.title() != null && !request.title().isBlank()) {
@@ -143,15 +146,50 @@ public class UnitServiceImpl implements UnitService{
     @Override
     @Transactional
     @CacheEvict(value = "subjects", key = "#subjectId")
+    public void reorder(Long subjectId, List<UnitReorderRequest> request, Long teacherId) {
+        Subject subject = subjectHelper.findSubjectByIdAndTeacherId(subjectId, teacherId);
+
+        subjectHelper.checkArchived(subject);
+
+        List<Long> unitIds = request.stream().map(UnitReorderRequest::id).toList();
+
+        List<Unit> units = unitRepository.findWithTopicsByIdsAndSubjectId(unitIds, subjectId);
+
+        if (units.size() != request.size()) throw new InvalidRequestException("Unit(s) not found");
+
+        Map<Long, Unit> unitMap = units.stream().collect(Collectors.toMap(Unit::getId, unit -> unit));
+
+        Unit unit;
+        for (UnitReorderRequest unitReorderRequest: request){
+            unit = unitMap.get(unitReorderRequest.id());
+            if (unit == null)
+                throw new InvalidRequestException("Unit not found: " + unitReorderRequest.id());
+            unit.setOrderIndex(unitReorderRequest.orderIndex());
+
+            Map<Long, Topic> topicMap = unit.getTopics().stream()
+                    .collect(Collectors.toMap(Topic::getId, topic -> topic));
+            Topic topic;
+            for (TopicReorderRequest topicReorderRequest: unitReorderRequest.topics()){
+                topic = topicMap.get(topicReorderRequest.id());
+                if (topic == null)
+                    throw new InvalidRequestException("Topic not found: " + topicReorderRequest.id());
+                topic.setOrderIndex(topicReorderRequest.orderIndex());
+            }
+        }
+        subject.touch();
+    }
+
+    @Override
+    @Transactional
+    @CacheEvict(value = "subjects", key = "#subjectId")
     public void deleteUnit(Long subjectId, Long unitId,Long teacherId) {
         Subject subject = subjectRepository.findWithCurrentNextTopicsByIdAndTeacherId(subjectId, teacherId)
                 .orElseThrow(() -> new ResourceNotFoundException("Subject not found"));
 
         subjectHelper.checkArchived(subject);
 
-        Unit unit = unitRepository.findWithTopicsByIdAndSubjectId(unitId, subjectId).orElseThrow(
-                () -> new ResourceNotFoundException("Unit not found")
-        );
+        Unit unit = unitRepository.findWithTopicsByIdAndSubjectId(unitId, subjectId)
+                .orElseThrow(() -> new InvalidRequestException("Unit not found"));
 
         boolean currentAffected = subject.getCurrentTopic() != null &&
                 subject.getCurrentTopic().getUnit().getId().equals(unitId);
