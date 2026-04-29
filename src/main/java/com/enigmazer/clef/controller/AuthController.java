@@ -27,7 +27,6 @@ public class AuthController {
     private final AuthService authService;
     private final CookieService cookieService;
 
-    // --- Authentication Operations ---
     @PostMapping("/login")
     @Operation(summary = "Login with email and password")
     public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
@@ -48,16 +47,6 @@ public class AuthController {
                         .body(new TwoFactorRequiredResponse(true));
             }
         };
-    }
-
-    @PostMapping("/password")
-    @Operation(summary = "Set or update password for user account")
-    public ResponseEntity<Void> setOrUpdatePassword(
-            @AuthenticationPrincipal CustomUserDetails principal,
-            @Valid @RequestBody SetUpdatePasswordReq request
-    ) {
-        authService.setOrUpdatePassword(principal.getId(), request.newPassword());
-        return ResponseEntity.ok().build();
     }
 
     @PostMapping("/refresh")
@@ -105,55 +94,5 @@ public class AuthController {
 
         return ResponseEntity.ok()
                 .header(HttpHeaders.SET_COOKIE, logoutCookie.toString()).build();
-    }
-
-    // --- Two-Factor Authentication Operations ---
-    @PostMapping("/2fa/send-otp")
-    @Operation(summary = "Send two-factor authentication otp")
-    public ResponseEntity<Void> sendOtp(
-            @AuthenticationPrincipal CustomUserDetails principal
-    ) {
-        authService.send2FAOtp(principal.getId());
-        return ResponseEntity.ok().build();
-    }
-
-    @PatchMapping("/2fa/enable")
-    @Operation(summary = "Enable two-factor authentication")
-    public ResponseEntity<Void> enable2FA(
-            @AuthenticationPrincipal CustomUserDetails principal,
-            @Valid @RequestBody TwoFAVerifyRequest request
-    ) {
-        authService.enable2FA(principal.getId(), request.otpCode());
-        return ResponseEntity.ok().build();
-    }
-
-    @PatchMapping("/2fa/disable")
-    @Operation(summary = "Disable two-factor authentication")
-    public ResponseEntity<Void> disable2FA(
-            @AuthenticationPrincipal CustomUserDetails principal,
-            @Valid @RequestBody TwoFAVerifyRequest request
-    ) {
-        authService.disable2FA(principal.getId(), request.otpCode());
-        return ResponseEntity.ok().build();
-    }
-
-    @PostMapping("/2fa/verify")
-    @Operation(summary = "Verify OTP and complete 2FA login")
-    public ResponseEntity<LoginResponse> verifyTwoFA(
-            @CookieValue("tempToken") String tempToken,
-            @Valid @RequestBody TwoFAVerifyRequest request
-    ) {
-
-        AuthResponse authData = authService.verifyTwoFA(tempToken, request.otpCode());
-
-        ResponseCookie refreshCookie = cookieService.generateRefreshTokenCookie(authData.refreshToken());
-        ResponseCookie clearTempCookie = cookieService.generateTempTokenClearCookie();
-
-        return ResponseEntity.ok()
-                .header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
-                .header(HttpHeaders.SET_COOKIE, clearTempCookie.toString())
-                .body(new LoginSuccessResponse(
-                        authData.userId(), authData.role(),
-                        authData.accessToken(), "Login successful"));
     }
 }

@@ -6,7 +6,6 @@ import com.enigmazer.clef.dto.topic.TopicUpdateRequest;
 import com.enigmazer.clef.dto.topic.TopicUpdateResponse;
 
 import java.util.List;
-import java.util.Set;
 
 public interface TopicService {
     List<TopicUpdateResponse> updateTopics(

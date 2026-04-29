@@ -9,10 +9,13 @@ import java.time.Duration;
 @Service
 public class CookieService {
     @Value("${jwt.refresh.cookie.expiration:7d}")
-    private Duration refreshTokenExpiration;
+    private Duration refreshCookieExpiration;
 
     @Value("${jwt.temp.cookie.expiration:5m}")
-    private Duration tempTokenExpiration;
+    private Duration tempCookieExpiration;
+
+    @Value("${jwt.passwordResetIntent.cookie.expiration:5m}")
+    private Duration passwordResetIntentCookieExpiration;
 
     @Value("${server.servlet.context-path:}")
     private String contextPath;
@@ -23,7 +26,7 @@ public class CookieService {
                 .httpOnly(true)
                 .secure(true)
                 .path(contextPath + "/auth/")
-                .maxAge(refreshTokenExpiration)
+                .maxAge(refreshCookieExpiration)
                 .sameSite("Strict")
                 .build();
     }
@@ -33,8 +36,18 @@ public class CookieService {
                 .httpOnly(true)
                 .secure(true)
                 .path(contextPath + "/auth/2fa/verify")
-                .maxAge(tempTokenExpiration)
+                .maxAge(tempCookieExpiration)
                 .sameSite("Strict")
+                .build();
+    }
+
+    public ResponseCookie generatePasswordResetIntentCookie(){
+        return ResponseCookie.from("passwordResetIntent", "true")
+                .httpOnly(true)
+                .secure(true)
+                .path(contextPath + "/login/oauth2/code")
+                .maxAge(passwordResetIntentCookieExpiration)
+                .sameSite("Lax")
                 .build();
     }
 
@@ -56,6 +69,16 @@ public class CookieService {
                 .path(contextPath + "/auth/2fa/verify")
                 .maxAge(0)
                 .sameSite("Strict")
+                .build();
+    }
+
+    public ResponseCookie generatePasswordResetIntentClearCookie() {
+        return ResponseCookie.from("passwordResetIntent", "")
+                .httpOnly(true)
+                .secure(true)
+                .path(contextPath + "/login/oauth2/code")
+                .maxAge(0)
+                .sameSite("Lax")
                 .build();
     }
 }

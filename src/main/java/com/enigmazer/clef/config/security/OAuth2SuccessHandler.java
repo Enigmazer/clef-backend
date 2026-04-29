@@ -3,11 +3,13 @@ package com.enigmazer.clef.config.security;
 import com.enigmazer.clef.entity.User;
 import com.enigmazer.clef.exception.SystemResourceNotFoundException;
 import com.enigmazer.clef.repository.UserRepository;
+import com.enigmazer.clef.service.auth.AuthService;
 import com.enigmazer.clef.service.auth.CookieService;
 import com.enigmazer.clef.service.auth.JwtService;
 import com.enigmazer.clef.service.auth.RefreshTokenService;
 import com.enigmazer.clef.service.phone.PhoneNumberService;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -21,6 +23,8 @@ import org.springframework.security.web.authentication.SimpleUrlAuthenticationSu
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.Optional;
 
 @Slf4j
 @Component
@@ -33,6 +37,7 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
     private final JwtService jwtService;
     private final RefreshTokenService refreshTokenService;
     private final PhoneNumberService phoneNumberService;
+    private final AuthService authService;
 
     @Value("${frontend.url}")
     private String frontendUrl;
@@ -40,6 +45,8 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
     private String oAuth2RedirectPath;
     @Value("${frontend.oauth2-2fa-redirect-path}")
     private String oauth2TwoFaRedirectPath;
+    @Value("${frontend.reset-password-redirect-path}")
+    private String passwordResetRedirectPath ;
 
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response,
@@ -53,6 +60,30 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new SystemResourceNotFoundException("User not found post oauth2 success for email", email));
 
+        Optional<Cookie> resetIntent = Arrays
+                .stream(request.getCookies() != null ? request.getCookies() : new Cookie[0])
+                .filter(c -> "passwordResetIntent".equals(c.getName()))
+                .findFirst();
+
+        if (resetIntent.isPresent()) {
+            ResponseCookie expiredIntent = cookieService.generatePasswordResetIntentClearCookie();
+            response.addHeader(HttpHeaders.SET_COOKIE, expiredIntent.toString());
+
+            authService.clearPassword(user.getId());
+            log.info("Password cleared via OAuth2 re-auth [userId={}]", user.getId());
+
+            String accessToken = jwtService.generateAccessToken(user);
+            String refreshToken = refreshTokenService.generateRefreshToken(user);
+            ResponseCookie refreshCookie = cookieService.generateRefreshTokenCookie(refreshToken);
+            response.addHeader(HttpHeaders.SET_COOKIE, refreshCookie.toString());
+
+            String targetUrl = frontendUrl + passwordResetRedirectPath + "#at=" + accessToken;
+            log.debug("Redirecting user to frontend [targetUrl={}]", targetUrl.split("#")[0] + "#at=<redacted>");
+
+            getRedirectStrategy().sendRedirect(request, response, targetUrl);
+            return;
+        }
+
         if (user.isTwoFactorEnabled()) {
             phoneNumberService.send2FAOtp(user.getId());
             String tempToken = jwtService.generateTempToken(user);
@@ -64,9 +95,7 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
 
         String accessToken = jwtService.generateAccessToken(user);
         String refreshToken = refreshTokenService.generateRefreshToken(user);
-
         ResponseCookie refreshCookie = cookieService.generateRefreshTokenCookie(refreshToken);
-
         response.addHeader(HttpHeaders.SET_COOKIE, refreshCookie.toString());
 
         // # fragment is stripped by the browser before sending to server — never reaches servers or logs

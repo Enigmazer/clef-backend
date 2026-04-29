@@ -143,7 +143,6 @@ public class PhoneNumberServiceImpl implements PhoneNumberService{
         log.info("2FA otp verified [userId={}]", userId);
     }
 
-
     // --- Helper Methods ---
     private void fakeOtpVerification(Long userId, String number, String code){
         String otp = number.replaceAll("\\D", "");

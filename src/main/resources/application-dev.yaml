@@ -21,8 +21,12 @@ spring:
 logging:
   level:
     com.enigmazer.clef: trace
+
 jwt:
   temp:
+    cookie:
+      expiration: 5m
+  passwordResetIntent:
     cookie:
       expiration: 5m
   access:

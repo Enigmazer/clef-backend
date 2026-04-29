@@ -48,6 +48,7 @@ frontend:
   url: ${FRONTEND_URL}
   oauth2-redirect-path: /dashboard
   oauth2-2fa-redirect-path: /2fa-verify
+  reset-password-redirect-path: /reset-password
 
 twilio:
   account-sid: ${TWILIO_ACCOUNT_SID}
@@ -67,4 +68,4 @@ supabase:
 
 gemini:
   api:
-    url: https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-preview:generateContent?key=${GEMINI_API_KEY}
+    url: ${GEMINI_API_URL}
