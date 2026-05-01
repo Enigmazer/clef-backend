@@ -11,3 +11,4 @@ target
 .env.example
 **/other/
 /src/main/resources/application-dev.yml
+/docs/
