@@ -26,8 +26,11 @@ spring:
             client-secret: dummy-test-secret
 
 jwt:
-  secret: this-is-a-very-secure-thirty-two-bytes-long-secrete-key
+  secret: this-is-a-very-secure-sixty-four-bytes-long-secrete-key
   temp:
+    cookie:
+      expiration: 5m
+  passwordReset:
     cookie:
       expiration: 5m
   access:

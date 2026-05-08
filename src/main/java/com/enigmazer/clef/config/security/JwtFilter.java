@@ -43,7 +43,9 @@ public class JwtFilter extends OncePerRequestFilter {
         String path = request.getServletPath();
         // These paths manage token issuance/rotation and must be reachable without a valid access token
         return path.startsWith("/auth/login")
-                || path.startsWith("/auth/password/reset/oauth2/init")
+                || path.startsWith("/auth/password/reset")
+                || path.startsWith("/auth/password/reset/oauth2/init/google")
+                || path.startsWith("/auth/password/reset/oauth2/init/github")
                 || path.startsWith("/auth/2fa/verify")
                 || path.startsWith("/auth/refresh")
                 || path.startsWith("/auth/logout")

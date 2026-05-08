@@ -1,6 +1,5 @@
 package com.enigmazer.clef.service.auth;
 
-import com.enigmazer.clef.dto.auth.TempTokenClaims;
 import com.enigmazer.clef.dto.auth.TokenClaims;
 import com.enigmazer.clef.entity.User;
 import io.jsonwebtoken.Claims;
@@ -34,6 +33,9 @@ public class JwtService {
     @Value("${jwt.temp.cookie.expiration:5m}")
     private Duration tempTokenDuration;
 
+    @Value("${jwt.passwordReset.cookie.expiration:5m}")
+    private Duration passwordResetTokenDuration;
+
     private SecretKey signingKey;
 
     @PostConstruct
@@ -53,6 +55,13 @@ public class JwtService {
         claims.put("type", "TWO_FA_PENDING");
         claims.put("userId", user.getId());
         return buildToken(claims, user.getEmail(), tempTokenDuration);
+    }
+
+    public String generatePasswordResetToken(User user){
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("type", "PASSWORD_RESET");
+        claims.put("userId", user.getId());
+        return buildToken(claims, user.getEmail(), passwordResetTokenDuration);
     }
 
     private String buildToken(Map<String, Object> extraClaims, String email, Duration expiration){
@@ -83,6 +92,14 @@ public class JwtService {
         }
     }
 
+    public boolean isValidPasswordResetToken(String token){
+        try {
+            return !isTokenExpired(token) && isPasswordReset(token);
+        } catch (JwtException | IllegalArgumentException e){
+            return false;
+        }
+    }
+
     public TokenClaims extractClaims(String token){
         Claims claims = extractAllClaims(token);
         return new TokenClaims(
@@ -91,15 +108,6 @@ public class JwtService {
                 claims.get("role", String.class)
         );
     }
-
-    public TempTokenClaims extractTempTokenClaims(String token) {
-        Claims claims = extractAllClaims(token);
-        return new TempTokenClaims(
-                claims.get("userId", Long.class),
-                claims.getSubject()
-        );
-    }
-
 
     public String extractUsername(String token){
         return extractClaim(token, Claims::getSubject);
@@ -113,12 +121,18 @@ public class JwtService {
         return extractExpiration(token).before(new Date());
     }
 
-    private boolean is2FAPending(String token){
-        return extractClaim(token, claims -> claims.get("type", String.class)).equals("TWO_FA_PENDING");
-    }
-
     private Date extractExpiration(String token){
         return extractClaim(token, Claims::getExpiration);
+    }
+
+    private boolean is2FAPending(String token){
+        return extractClaim(token, claims ->
+                claims.get("type", String.class)).equals("TWO_FA_PENDING");
+    }
+
+    private boolean isPasswordReset(String token){
+        return extractClaim(token, claims ->
+                claims.get("type", String.class)).equals("PASSWORD_RESET");
     }
 
     private <T> T extractClaim(String token, Function<Claims, T> claimsResolver){

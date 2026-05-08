@@ -1,5 +1,6 @@
 package com.enigmazer.clef.service.auth;
 
+import com.enigmazer.clef.dto.auth.CustomOAuth2User;
 import com.enigmazer.clef.dto.auth.UserInfoFromProvider;
 import com.enigmazer.clef.entity.Role;
 import com.enigmazer.clef.entity.SocialAccount;
@@ -10,6 +11,7 @@ import com.enigmazer.clef.exception.SystemResourceNotFoundException;
 import com.enigmazer.clef.repository.RoleRepository;
 import com.enigmazer.clef.repository.SocialAccountRepository;
 import com.enigmazer.clef.repository.UserRepository;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.ParameterizedTypeReference;
@@ -27,11 +29,10 @@ import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
 @Slf4j
 @Service
@@ -49,7 +50,10 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
     public OAuth2User loadUser(OAuth2UserRequest userRequest) throws OAuth2AuthenticationException {
         OAuth2User oAuth2User = super.loadUser(userRequest);
         Map<String, Object> attributes = oAuth2User.getAttributes();
+
         String providerString = userRequest.getClientRegistration().getRegistrationId();
+        boolean hasPasswordResetIntent = providerString.endsWith("-reset");
+        if(hasPasswordResetIntent) providerString = providerString.replace("-reset", "");
 
         UserInfoFromProvider userInfo = getVerifiedUserInfo(
                 oAuth2User, providerString, attributes, userRequest);
@@ -59,23 +63,38 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
 
         if (existingUser.isPresent()) {
             user = existingUser.get();
+            if(hasPasswordResetIntent){
+                if(user.getPassword() == null)
+                    throw new OAuth2AuthenticationException(
+                            new OAuth2Error("password_reset_unavailable"),
+                            "password_reset_unavailable"
+                    );
+            }
             checkActive(user, providerString);
             log.info("Existing user login [provider={}, userId={}]", providerString, user.getId());
         } else {
+            if(hasPasswordResetIntent) {
+                throw new OAuth2AuthenticationException(
+                        new OAuth2Error("account_unavailable"),
+                        "account_unavailable"
+                );
+            }
             user = registerUser(userInfo);
             log.info("Registered new user [provider={}, userId={}", providerString, user.getId());
         }
 
-        linkSocialAccount(user, userInfo);
+        linkSocialAccount(user, userInfo, hasPasswordResetIntent);
 
         String authorityName = "ROLE_" + user.getRole().getName().name();
 
         log.info("Returned default oauth2 user [userId={}, role={}, " +
                 "provider={}]", user.getId(), authorityName, providerString);
-        return new DefaultOAuth2User(
+        return new CustomOAuth2User(
+                new DefaultOAuth2User(
                 List.of(new SimpleGrantedAuthority(authorityName)),
                 Collections.singletonMap("email", user.getEmail()),
-                "email"
+                "email"),
+                hasPasswordResetIntent
         );
     }
 
@@ -93,7 +112,7 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
         String name;
 
         if ("google".equals(providerString)) {
-            providerId = getProviderId(oAuth2User.getAttribute("sub"), providerEnum.toString());
+            providerId = getProviderId(oAuth2User.getAttribute("sub"), providerEnum.name());
             email = fetchVerifiedGoogleEmail(oAuth2User, attributes);
             name = oAuth2User.getAttribute("name");
             if (name == null || name.isBlank()) {
@@ -101,7 +120,7 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
             }
 
         } else if ("github".equals(providerString)) {
-            providerId = getProviderId(String.valueOf(attributes.get("id")), providerEnum.toString());
+            providerId = getProviderId(String.valueOf(attributes.get("id")), providerEnum.name());
             email = fetchVerifiedGitHubEmail(userRequest.getAccessToken().getTokenValue());
             name = oAuth2User.getAttribute("name");
             if (name == null || name.isBlank()) {
@@ -111,7 +130,7 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
         } else {
             throw new OAuth2AuthenticationException(
                     new OAuth2Error("unsupported_provider"),
-                    "Provider not supported"
+                    "unsupported_provider"
             );
         }
 
@@ -131,7 +150,7 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
                     "provider [provider={}]", providerString);
             throw new OAuth2AuthenticationException(
                     new OAuth2Error("unsupported_provider"),
-                    "Provider not supported"
+                    "unsupported_provider"
             );
         }
     }
@@ -140,7 +159,8 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
         if (providerId == null || providerId.isBlank()) {
             throw new OAuth2AuthenticationException(
                     new OAuth2Error("missing_provider_id"),
-                    "Provider id not found from " + provider);
+                    "missing_provider_id"
+            );
         }
         return providerId;
     }
@@ -151,14 +171,14 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
             log.warn("Email is missing from provider [provider=google, email={}]", email);
             throw new OAuth2AuthenticationException(
                     new OAuth2Error("missing_google_email"),
-                    "Email not found from Google");
+                    "missing_google_email");
         }
         if(!Boolean.TRUE.equals(attributes.get("email_verified"))){
             log.warn("Blocked unverified email registration/login " +
                     "attempt [provider=google, email={}]", email);
             throw new OAuth2AuthenticationException(
                     new OAuth2Error("unverified_email"),
-                    "Your email must be verified with Google");
+                    "unverified_email");
         }
         return email;
     }
@@ -191,7 +211,7 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
         }
         throw new OAuth2AuthenticationException(
                 new OAuth2Error("missing_github_email"),
-                "Could not fetch a verified email from GitHub"
+                "missing_github_email"
         );
     }
 
@@ -209,10 +229,18 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
         );
     }
 
-    private void linkSocialAccount(User user, UserInfoFromProvider userInfo){
+    private void linkSocialAccount(
+            User user, UserInfoFromProvider userInfo, boolean hasPasswordResetIntent
+    ){
         Optional<SocialAccount> socialAccount = socialAccountRepository
                 .findByProviderAndProviderId(userInfo.providerEnum(), userInfo.providerId());
         if (socialAccount.isEmpty()) {
+            if(hasPasswordResetIntent) {
+                throw new OAuth2AuthenticationException(
+                        new OAuth2Error("provider_mismatch"),
+                        "provider_mismatch"
+                );
+            }
             SocialAccount newSocialAccount = SocialAccount.builder()
                     .user(user)
                     .provider(userInfo.providerEnum())
@@ -220,7 +248,7 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
                     .build();
             socialAccountRepository.save(newSocialAccount);
             log.info("Social account linked with user account [provider={}, " +
-                    "userId={}]", userInfo.providerEnum().toString(), user.getId());
+                    "userId={}]", userInfo.providerEnum().name(), user.getId());
         }
     }
 
@@ -230,7 +258,7 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
                     "[provider={}, userId={}]", providerString, user.getId());
             throw new OAuth2AuthenticationException(
                     new OAuth2Error("account_disabled"),
-                    "Account is disabled");
+                    "account_disabled");
         }
     }
 }

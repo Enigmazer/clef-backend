@@ -90,15 +90,6 @@ public class AuthServiceImpl implements AuthService{
 
     @Override
     @Transactional
-    public void clearPassword(Long userId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new SystemResourceNotFoundException("User not found", userId));
-
-        user.setPassword(null);
-    }
-
-    @Override
-    @Transactional
     public TokenPair refreshTokens(String refreshToken) {
         RefreshToken token = refreshTokenService.findByToken(refreshToken)
                 .orElseThrow(() -> new BusinessException("Invalid or expired refresh token."));

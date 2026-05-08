@@ -1,5 +1,6 @@
 package com.enigmazer.clef.config.security;
 
+import com.enigmazer.clef.dto.auth.CustomOAuth2User;
 import com.enigmazer.clef.entity.User;
 import com.enigmazer.clef.exception.SystemResourceNotFoundException;
 import com.enigmazer.clef.repository.UserRepository;
@@ -8,8 +9,6 @@ import com.enigmazer.clef.service.auth.CookieService;
 import com.enigmazer.clef.service.auth.JwtService;
 import com.enigmazer.clef.service.auth.RefreshTokenService;
 import com.enigmazer.clef.service.phone.PhoneNumberService;
-import jakarta.servlet.ServletException;
-import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -18,13 +17,10 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.security.web.authentication.SimpleUrlAuthenticationSuccessHandler;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.Optional;
 
 @Slf4j
 @Component
@@ -50,9 +46,8 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
 
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response,
-                                        Authentication authentication) throws IOException, ServletException {
-
-        OAuth2User oAuth2User = (OAuth2User) authentication.getPrincipal();
+                                        Authentication authentication) throws IOException {
+        CustomOAuth2User oAuth2User = (CustomOAuth2User) authentication.getPrincipal();
         String email = oAuth2User.getAttribute("email");
 
         log.info("OAuth2 authentication successful [email={}]", email);
@@ -60,25 +55,13 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new SystemResourceNotFoundException("User not found post oauth2 success for email", email));
 
-        Optional<Cookie> resetIntent = Arrays
-                .stream(request.getCookies() != null ? request.getCookies() : new Cookie[0])
-                .filter(c -> "passwordResetIntent".equals(c.getName()))
-                .findFirst();
+        if (oAuth2User.passwordResetIntent()) {
+            String passwordRestToken = jwtService.generatePasswordResetToken(user);
+            ResponseCookie passwordRestCookie = cookieService.generatePasswordResetCookie(passwordRestToken);
+            response.addHeader(HttpHeaders.SET_COOKIE, passwordRestCookie.toString());
 
-        if (resetIntent.isPresent()) {
-            ResponseCookie expiredIntent = cookieService.generatePasswordResetIntentClearCookie();
-            response.addHeader(HttpHeaders.SET_COOKIE, expiredIntent.toString());
-
-            authService.clearPassword(user.getId());
-            log.info("Password cleared via OAuth2 re-auth [userId={}]", user.getId());
-
-            String accessToken = jwtService.generateAccessToken(user);
-            String refreshToken = refreshTokenService.generateRefreshToken(user);
-            ResponseCookie refreshCookie = cookieService.generateRefreshTokenCookie(refreshToken);
-            response.addHeader(HttpHeaders.SET_COOKIE, refreshCookie.toString());
-
-            String targetUrl = frontendUrl + passwordResetRedirectPath + "#at=" + accessToken;
-            log.debug("Redirecting user to frontend [targetUrl={}]", targetUrl.split("#")[0] + "#at=<redacted>");
+            String targetUrl = frontendUrl + passwordResetRedirectPath;
+            log.debug("Redirecting user to frontend [targetUrl={}]", targetUrl);
 
             getRedirectStrategy().sendRedirect(request, response, targetUrl);
             return;

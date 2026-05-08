@@ -26,7 +26,7 @@ jwt:
   temp:
     cookie:
       expiration: 5m
-  passwordResetIntent:
+  passwordReset:
     cookie:
       expiration: 5m
   access:

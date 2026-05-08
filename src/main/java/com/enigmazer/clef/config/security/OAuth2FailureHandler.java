@@ -5,6 +5,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 import org.springframework.security.web.authentication.AuthenticationFailureHandler;
 import org.springframework.stereotype.Component;
 
@@ -18,9 +19,12 @@ public class OAuth2FailureHandler implements AuthenticationFailureHandler {
     private String frontendUrl;
 
     @Override
-    public void onAuthenticationFailure(HttpServletRequest request, HttpServletResponse response,
-                                        AuthenticationException exception) throws IOException {
+    public void onAuthenticationFailure(
+            HttpServletRequest request, HttpServletResponse response,
+            AuthenticationException exception) throws IOException
+    {
         log.warn("OAuth2 authentication failed: {}", exception.getMessage());
-        response.sendRedirect(frontendUrl + "/login?error=oauth2_failed");
+        String errorCode = exception.getMessage() != null ? exception.getMessage() : "oauth2_failed";
+        response.sendRedirect(frontendUrl + "/login?error=" + errorCode);
     }
 }

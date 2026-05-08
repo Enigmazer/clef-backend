@@ -1,7 +1,6 @@
 package com.enigmazer.clef.service.twofa;
 
 import com.enigmazer.clef.dto.auth.AuthResponse;
-import com.enigmazer.clef.dto.auth.TempTokenClaims;
 import com.enigmazer.clef.entity.User;
 import com.enigmazer.clef.exception.InvalidRequestException;
 import com.enigmazer.clef.exception.SystemResourceNotFoundException;
@@ -57,9 +56,9 @@ public class TwoFactorServiceImpl implements TwoFactorService{
             throw new InvalidRequestException("Invalid or expired 2FA session");
         }
 
-        TempTokenClaims claims = jwtService.extractTempTokenClaims(tempToken);
+        Long userId = jwtService.extractClaims(tempToken).userId();
 
-        User user = verify2FAOtpAndGetUser(otpCode, claims.userId());
+        User user = verify2FAOtpAndGetUser(otpCode, userId);
 
         String accessToken = jwtService.generateAccessToken(user);
         String refreshToken = refreshTokenService.generateRefreshToken(user);

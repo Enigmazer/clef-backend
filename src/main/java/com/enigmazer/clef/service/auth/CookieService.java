@@ -14,8 +14,8 @@ public class CookieService {
     @Value("${jwt.temp.cookie.expiration:5m}")
     private Duration tempCookieExpiration;
 
-    @Value("${jwt.passwordResetIntent.cookie.expiration:5m}")
-    private Duration passwordResetIntentCookieExpiration;
+    @Value("${jwt.passwordReset.cookie.expiration:5m}")
+    private Duration passwordResetCookieExpiration;
 
     @Value("${server.servlet.context-path:}")
     private String contextPath;
@@ -41,13 +41,13 @@ public class CookieService {
                 .build();
     }
 
-    public ResponseCookie generatePasswordResetIntentCookie(){
-        return ResponseCookie.from("passwordResetIntent", "true")
+    public ResponseCookie generatePasswordResetCookie(String token){
+        return ResponseCookie.from("passwordReset", token)
                 .httpOnly(true)
                 .secure(true)
-                .path(contextPath + "/login/oauth2/code")
-                .maxAge(passwordResetIntentCookieExpiration)
-                .sameSite("Lax")
+                .path(contextPath + "/auth/password/reset")
+                .maxAge(passwordResetCookieExpiration)
+                .sameSite("Strict")
                 .build();
     }
 
@@ -72,13 +72,13 @@ public class CookieService {
                 .build();
     }
 
-    public ResponseCookie generatePasswordResetIntentClearCookie() {
-        return ResponseCookie.from("passwordResetIntent", "")
+    public ResponseCookie generatePasswordResetClearCookie() {
+        return ResponseCookie.from("passwordReset", "")
                 .httpOnly(true)
                 .secure(true)
-                .path(contextPath + "/login/oauth2/code")
+                .path(contextPath + "/auth/password/reset")
                 .maxAge(0)
-                .sameSite("Lax")
+                .sameSite("Strict")
                 .build();
     }
 }

@@ -28,11 +28,23 @@ spring:
             client-secret: ${GOOGLE_CLIENT_SECRET}
             scope: email, profile
             redirect-uri: "${FRONTEND_URL}/api/login/oauth2/code/{registrationId}"
+          google-reset:
+            provider: google
+            client-id: ${GOOGLE_CLIENT_ID}
+            client-secret: ${GOOGLE_CLIENT_SECRET}
+            scope: email, profile
+            redirect-uri: "${FRONTEND_URL}/api/login/oauth2/code/google-reset"
           github:
             client-id: ${GITHUB_CLIENT_ID}
             client-secret: ${GITHUB_CLIENT_SECRET}
             scope: read:user, user:email
             redirect-uri: "${FRONTEND_URL}/api/login/oauth2/code/{registrationId}"
+          github-reset:
+            provider: github
+            client-id: ${GITHUB_CLIENT_ID}
+            client-secret: ${GITHUB_CLIENT_SECRET}
+            scope: read:user, user:email
+            redirect-uri: "${FRONTEND_URL}/api/login/oauth2/code/github-reset"
 
   jpa:
     open-in-view: false # Prevents database connection exhaustion in a large-scale userbase

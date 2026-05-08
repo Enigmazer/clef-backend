@@ -23,9 +23,9 @@ jwt:
   temp:
     cookie:
       expiration: ${JWT_TEMP_COOKIE_EXPIRATION:5m}
-  passwordResetIntent:
+  passwordReset:
     cookie:
-      expiration: ${JWT_PASSWORD_RESET_INTENT_COOKIE_EXPIRATION:5m}
+      expiration: ${JWT_PASSWORD_RESET_COOKIE_EXPIRATION:5m}
   access:
     cookie:
       expiration: ${JWT_ACCESS_COOKIE_EXPIRATION:15m}

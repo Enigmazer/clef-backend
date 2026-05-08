@@ -38,7 +38,9 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/actuator/health",
                                 "/auth/login",
-                                "/auth/password/reset/oauth2/init",
+                                "/auth/password/reset",
+                                "/auth/password/reset/oauth2/init/google",
+                                "/auth/password/reset/oauth2/init/github",
                                 "/auth/2fa/verify",
                                 "/auth/refresh",
                                 "/auth/logout",

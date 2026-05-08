@@ -7,4 +7,6 @@ public interface PasswordService {
     void setPassword(SetPasswordRequest request, Long userId);
 
     void updatePassword(UpdatePasswordRequest request, Long userId);
+
+    void resetPassword(String passwordResetToken, SetPasswordRequest request);
 }
