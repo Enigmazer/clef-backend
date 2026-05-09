@@ -15,12 +15,22 @@ public class CacheConfig {
 
     @Bean
     public CacheManager cacheManager(){
-        CaffeineCacheManager cacheManager = new CaffeineCacheManager("subjects");
-        cacheManager.setCaffeine(
+        CaffeineCacheManager cacheManager = new CaffeineCacheManager();
+
+        cacheManager.registerCustomCache("subjects",
                 Caffeine.newBuilder()
                         .maximumSize(500)
                         .expireAfterWrite(12, TimeUnit.HOURS)
                         .recordStats()
+                        .build()
+        );
+
+        cacheManager.registerCustomCache("urls",
+                Caffeine.newBuilder()
+                        .maximumSize(1000)
+                        .expireAfterWrite(55, TimeUnit.MINUTES)
+                        .recordStats()
+                        .build()
         );
         return cacheManager;
     }

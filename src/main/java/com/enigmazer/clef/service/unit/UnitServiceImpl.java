@@ -19,6 +19,7 @@ import com.enigmazer.clef.repository.SubjectRepository;
 import com.enigmazer.clef.repository.TopicRepository;
 import com.enigmazer.clef.repository.UnitRepository;
 import com.enigmazer.clef.service.common.SubjectHelper;
+import com.enigmazer.clef.service.common.UrlCacheService;
 import com.enigmazer.clef.service.storage.StorageService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -29,7 +30,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -42,6 +42,7 @@ public class UnitServiceImpl implements UnitService{
     private final SubjectRepository subjectRepository;
     private final TopicRepository topicRepository;
 
+    private final UrlCacheService urlCacheService;
     private final StorageService storageService;
 
     private final UnitMapper unitMapper;
@@ -154,11 +155,8 @@ public class UnitServiceImpl implements UnitService{
         subjectHelper.checkArchived(subject);
 
         List<Long> unitIds = request.stream().map(UnitReorderRequest::id).toList();
-
         List<Unit> units = unitRepository.findWithTopicsByIdsAndSubjectId(unitIds, subjectId);
-
         if (units.size() != request.size()) throw new InvalidRequestException("Unit(s) not found");
-
         Map<Long, Unit> unitMap = units.stream().collect(Collectors.toMap(Unit::getId, unit -> unit));
 
         Unit unit;
@@ -205,13 +203,16 @@ public class UnitServiceImpl implements UnitService{
                     "[subjectId={}, unitId={}]", subjectId, unitId);
         }
 
-        List<String> topicMaterialKeys = unit.getTopics().stream()
+        List<TopicMaterial> topicMaterials = unit.getTopics().stream()
                 .flatMap(topic -> topic.getTopicMaterials().stream())
+                .toList();
+        List<String> topicMaterialKeys = topicMaterials.stream()
                 .map(TopicMaterial::getTopicMaterialKey)
-                .filter(Objects::nonNull)
                 .toList();
 
-        if(!topicMaterialKeys.isEmpty()){
+        if(!topicMaterials.isEmpty()){
+            topicMaterials.forEach(
+                    tm -> urlCacheService.evictTopicMaterialUrl(subjectId, tm.getId()));
             storageService.deleteTopicMaterials(topicMaterialKeys);
         }
 

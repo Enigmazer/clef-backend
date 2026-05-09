@@ -13,6 +13,7 @@ import com.enigmazer.clef.mapper.SubjectMapper;
 import com.enigmazer.clef.repository.SubjectRepository;
 import com.enigmazer.clef.repository.UnitRepository;
 import com.enigmazer.clef.service.common.SubjectHelper;
+import com.enigmazer.clef.service.common.UrlCacheService;
 import com.enigmazer.clef.service.gemini.GeminiService;
 import com.enigmazer.clef.service.storage.StorageService;
 import com.fasterxml.jackson.core.JacksonException;
@@ -21,6 +22,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -37,6 +39,7 @@ public class SyllabusServiceImpl implements SyllabusService{
     private final SubjectRepository subjectRepository;
     private final UnitRepository unitRepository;
 
+    private final UrlCacheService urlCacheService;
     private final StorageService storageService;
     private final GeminiService geminiService;
 
@@ -54,7 +57,7 @@ public class SyllabusServiceImpl implements SyllabusService{
         String syllabusKey = subject.getSyllabusKey();
         if(syllabusKey == null)  throw new InvalidRequestException("No syllabus found for the subject");
 
-        String url = storageService.generateSyllabusUrl(syllabusKey);
+        String url = urlCacheService.getSyllabusUrl(syllabusKey, subjectId);
 
         log.info("Returned syllabus url [subjectId={}, userId={}]", subjectId, userId);
         return new SubjectSyllabusUrlResponse(url);
@@ -84,7 +87,10 @@ public class SyllabusServiceImpl implements SyllabusService{
 
     @Override
     @Transactional
-    @CacheEvict(value = "subjects", key = "#subjectId")
+    @Caching(evict = {
+            @CacheEvict(value = "subjects", key = "#subjectId"),
+            @CacheEvict(value = "urls", key = "'syllabus:' + #subjectId")
+    })
     public SubjectUpdateResponse deleteSyllabus(Long subjectId, Long teacherId) {
         Subject subject = subjectHelper.findSubjectByIdAndTeacherId(subjectId, teacherId);
 

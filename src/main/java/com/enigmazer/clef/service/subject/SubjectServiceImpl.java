@@ -19,12 +19,14 @@ import com.enigmazer.clef.repository.SubjectRepository;
 import com.enigmazer.clef.repository.TopicRepository;
 import com.enigmazer.clef.repository.UserRepository;
 import com.enigmazer.clef.service.common.SubjectHelper;
+import com.enigmazer.clef.service.common.UrlCacheService;
 import com.enigmazer.clef.service.storage.StorageService;
 import com.enigmazer.clef.util.JoinCodeGenerator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -42,6 +44,7 @@ public class SubjectServiceImpl implements SubjectService {
     private final EnrollmentRepository enrollmentRepository;
     private final UserRepository userRepository;
 
+    private final UrlCacheService urlCacheService;
     private final StorageService storageService;
 
     private final SubjectMapper subjectMapper;
@@ -221,7 +224,10 @@ public class SubjectServiceImpl implements SubjectService {
 
     @Override
     @Transactional
-    @CacheEvict(value = "subjects", key = "#subjectId")
+    @Caching(evict = {
+            @CacheEvict(value = "subjects", key = "#subjectId"),
+            @CacheEvict(value = "urls", key = "'syllabus:' + #subjectId")
+    })
     public void deleteSubject(Long subjectId, Long teacherId) {
        Subject subject = subjectRepository.findSubjectDetailByIdAndTeacherId(subjectId, teacherId)
                .orElseThrow(() -> new ResourceNotFoundException("Subject not found"));
@@ -241,6 +247,7 @@ public class SubjectServiceImpl implements SubjectService {
                 .toList();
 
         if(!topicMaterialKeys.isEmpty()){
+            urlCacheService.evictAllMaterialUrlsForSubject(subjectId);
             storageService.deleteTopicMaterials(topicMaterialKeys);
         }
 

@@ -15,6 +15,7 @@ import com.enigmazer.clef.mapper.TopicMapper;
 import com.enigmazer.clef.repository.SubjectRepository;
 import com.enigmazer.clef.repository.TopicRepository;
 import com.enigmazer.clef.service.common.SubjectHelper;
+import com.enigmazer.clef.service.common.UrlCacheService;
 import com.enigmazer.clef.service.storage.StorageService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -25,8 +26,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
-import java.util.Set;
 
 @Slf4j
 @Service
@@ -37,6 +36,7 @@ public class TopicServiceImpl implements TopicService{
     private final TopicRepository topicRepository;
     private final SubjectRepository subjectRepository;
 
+    private final UrlCacheService urlCacheService;
     private final StorageService storageService;
 
     private final TopicMapper topicMapper;
@@ -121,8 +121,6 @@ public class TopicServiceImpl implements TopicService{
 
         subjectHelper.checkArchived(subject);
 
-        List<String> topicMaterialKeys = new ArrayList<>();
-
         List<Topic> topics = topicRepository
                 .findWithTopicMaterialsByIdsAndParentValidation(request.topicIds(), unitId, subjectId);
 
@@ -132,35 +130,37 @@ public class TopicServiceImpl implements TopicService{
 
         boolean currentAffected = false;
         boolean nextAffected = false;
-        Long topicId = null;
+        Long currentTopicId = null;
+        Long nextTopicId = null;
 
         for (Topic topic : topics){
-
             if ((subject.getCurrentTopic() != null && subject.getCurrentTopic().equals(topic))){
                 currentAffected = true;
-                topicId = topic.getId();
+                currentTopicId = topic.getId();
             }
             if ((subject.getNextTopic() != null && subject.getNextTopic().equals(topic))) {
                 nextAffected = true;
-                topicId = topic.getId();
+                nextTopicId = topic.getId();
             }
-
-            Set<TopicMaterial> topicMaterials = topic.getTopicMaterials();
-            topicMaterialKeys.addAll(
-                    topicMaterials.stream()
-                            .map(TopicMaterial::getTopicMaterialKey)
-                            .filter(Objects::nonNull).toList()
-            );
         }
+        List<TopicMaterial> topicMaterials = topics.stream()
+                .flatMap(topic -> topic.getTopicMaterials().stream())
+                .toList();
+
+        List<String> topicMaterialKeys = topicMaterials.stream()
+                .map(TopicMaterial::getTopicMaterialKey)
+                .toList();
 
         if (currentAffected || nextAffected) {
             if (currentAffected) subject.setCurrentTopic(null);
             if (nextAffected) subject.setNextTopic(null);
-            log.warn("Deleted topic was set as current or next topic, pointers cleared " +
-                    "[subjectId={}, id={}]", subjectId, topicId);
+            log.warn("Deleted topic was set as current or next topic, pointers cleared [subjectId={}, " +
+                    "currentTopicId={}, nextTopicId={}]", subjectId, currentTopicId, nextTopicId);
         }
 
         if(!topicMaterialKeys.isEmpty()){
+            topicMaterials.forEach(
+                    tm -> urlCacheService.evictTopicMaterialUrl(subjectId, tm.getId()));
             storageService.deleteTopicMaterials(topicMaterialKeys);
         }
 
@@ -178,11 +178,11 @@ public class TopicServiceImpl implements TopicService{
         Topic newCurrentTopic = subject.getNextTopic();
 
         if(newCurrentTopic == null){
-            newCurrentTopic = getNewNextTopicAfter(subject.getCurrentTopic(), oldCurrentId);
+            newCurrentTopic = getNewNextTopicAfter(subject.getCurrentTopic());
         }
         Long newCurrentId = newCurrentTopic != null ? newCurrentTopic.getId() : null;
         Topic newNextTopic = newCurrentTopic != null ?
-                getNewNextTopicAfter(newCurrentTopic, newCurrentId) : null;
+                getNewNextTopicAfter(newCurrentTopic) : null;
 
         subject.setCurrentTopic(newCurrentTopic);
         subject.setNextTopic(newNextTopic);
@@ -191,34 +191,25 @@ public class TopicServiceImpl implements TopicService{
     private void setNewNextTopic(Subject subject) {
         Long currentId = subject.getCurrentTopic() != null ?
                 subject.getCurrentTopic().getId() : null;
-        Topic newNextTopic = getNewNextTopicAfter(subject.getNextTopic(), currentId);
+        Topic newNextTopic = getNewNextTopicAfter(subject.getNextTopic());
 
         subject.setNextTopic(newNextTopic);
     }
 
-    private Topic getNewNextTopicAfter(Topic topic, Long currentId){
+    private Topic getNewNextTopicAfter(Topic topic){
         Topic newNextTopic = topicRepository
-                .findByOrderIndexAndParentValidation(
-                        topic.getOrderIndex() + 1,
-                        topic.getUnit().getId(),
-                        topic.getUnit().getSubject().getId(),
-                        currentId
+                .findFirstTopicInSequence(
+                        topic.getId(),
+                        topic.getOrderIndex(),
+                        topic.getUnit().getOrderIndex(),
+                        topic.getUnit().getSubject().getId()
                 ).orElse(null);
 
         if (newNextTopic == null) {
             newNextTopic = topicRepository
-                    .findFirstTopicByUnitOrderIndexAndSubjectId(
-                            topic.getUnit().getOrderIndex() + 1,
-                            topic.getUnit().getSubject().getId(),
-                            currentId
-                    ).orElse(null);
-        }
-
-        if (newNextTopic == null) {
-            newNextTopic = topicRepository
                     .findRemainingFirstTopicBySubjectId(
-                            topic.getUnit().getSubject().getId(),
-                            currentId
+                            topic.getId(),
+                            topic.getUnit().getSubject().getId()
                     ).orElse(null);
         }
         return newNextTopic;

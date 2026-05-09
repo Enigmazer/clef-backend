@@ -44,30 +44,23 @@ public interface TopicRepository extends JpaRepository<Topic, Long> {
     );
 
     @Query("SELECT t FROM Topic t WHERE t.completedAt IS NULL AND " +
-            "(:currentTopicId IS NULL OR t.id != :currentTopicId) AND t.orderIndex = " +
-            ":orderIndex AND t.unit.id = :unitId AND t.unit.subject.id = :subjectId")
-    Optional<Topic> findByOrderIndexAndParentValidation(
-            @Param("orderIndex") int orderIndex,
-            @Param("unitId") Long unitId,
-            @Param("subjectId") Long subjectId,
-            @Param("currentTopicId") Long currentTopicId
-    );
-
-    @Query("SELECT t FROM Topic t WHERE t.completedAt IS NULL AND " +
-            "(:currentTopicId IS NULL OR t.id != :currentTopicId) AND t.unit.orderIndex = " +
-            ":unitOrderIndex AND t.unit.subject.id = :subjectId ORDER BY t.orderIndex ASC LIMIT 1")
-    Optional<Topic> findFirstTopicByUnitOrderIndexAndSubjectId(
+            "(:currentTopicId IS NULL OR t.id != :currentTopicId) " +
+            "AND t.unit.subject.id = :subjectId AND ((t.unit.orderIndex = :unitOrderIndex " +
+            "AND t.orderIndex > :topicOrderIndex) OR t.unit.orderIndex > :unitOrderIndex) " +
+            "ORDER BY t.unit.orderIndex ASC, t.orderIndex ASC LIMIT 1")
+    Optional<Topic> findFirstTopicInSequence(
+            @Param("currentTopicId") Long currentTopicId,
+            @Param("topicOrderIndex") int topicOrderIndex,
             @Param("unitOrderIndex") int unitOrderIndex,
-            @Param("subjectId") Long subjectId,
-            @Param("currentTopicId") Long currentTopicId
+            @Param("subjectId") Long subjectId
     );
 
     @Query("SELECT t FROM Topic t WHERE t.completedAt IS NULL AND " +
             "(:currentTopicId IS NULL OR t.id != :currentTopicId) AND t.unit.subject.id " +
             "= :subjectId ORDER BY t.unit.orderIndex ASC, t.orderIndex ASC LIMIT 1")
     Optional<Topic> findRemainingFirstTopicBySubjectId(
-            @Param("subjectId") Long subjectId,
-            @Param("currentTopicId") Long currentTopicId
+            @Param("currentTopicId") Long currentTopicId,
+            @Param("subjectId") Long subjectId
     );
 
     boolean existsByTitleAndUnitId(String trimmed, Long unitId);

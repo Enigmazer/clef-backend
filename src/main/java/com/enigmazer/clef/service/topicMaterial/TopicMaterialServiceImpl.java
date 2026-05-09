@@ -13,6 +13,7 @@ import com.enigmazer.clef.mapper.TopicMaterialMapper;
 import com.enigmazer.clef.repository.TopicMaterialRepository;
 import com.enigmazer.clef.repository.TopicRepository;
 import com.enigmazer.clef.service.common.SubjectHelper;
+import com.enigmazer.clef.service.common.UrlCacheService;
 import com.enigmazer.clef.service.storage.StorageService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -32,6 +33,7 @@ public class TopicMaterialServiceImpl implements TopicMaterialService{
     private final TopicMaterialRepository topicMaterialRepository;
     private final TopicRepository topicRepository;
 
+    private final UrlCacheService urlCacheService;
     private final StorageService storageService;
 
     private final TopicMaterialMapper topicMaterialMapper;
@@ -48,7 +50,7 @@ public class TopicMaterialServiceImpl implements TopicMaterialService{
                 .orElseThrow(() -> new ResourceNotFoundException("Topic material not found"))
                 .getTopicMaterialKey();
 
-        String url = storageService.generateTopicMaterialUrl(topicMaterialKey);
+        String url = urlCacheService.getTopicMaterialUrl(topicMaterialKey, topicMaterialId);
         log.info("Returning url for topic material [topicMaterialId={}, " +
                 "subjectId={}, userId={}]", topicId, subjectId, userId);
         return new TopicMaterialUrlResponse(url);
@@ -109,6 +111,8 @@ public class TopicMaterialServiceImpl implements TopicMaterialService{
                 .toList();
 
         if(!topicMaterials.isEmpty()){
+            topicMaterials.forEach(
+                    tm -> urlCacheService.evictTopicMaterialUrl(subjectId,tm.getId()));
             storageService.deleteTopicMaterials(topicMaterialKeys);
             topicMaterialRepository.deleteAll(topicMaterials);
             subject.touch();
