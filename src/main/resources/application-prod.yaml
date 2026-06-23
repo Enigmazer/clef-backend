@@ -7,6 +7,9 @@ springdoc:
 spring:
   datasource:
     url: ${DB_URL}
+    hikari:
+      minimum-idle: ${HIKARI_MINIMUM_CONNECTIONS:0}
+      idle-timeout: ${HIKARI_IDLE_TIMEOUT:60000}
     
   flyway:
     baseline-on-migrate: false
